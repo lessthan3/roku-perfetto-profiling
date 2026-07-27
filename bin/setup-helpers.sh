@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+url="https://github.com/lessthan3"
+
+function git.clone()  { git.pkg clone "$@"; }
+function git.submodule.add()  { git.pkg submodule "$@"; }
+
+function git.pkg()  {
+  local mode name branch dest
+
+  mode="$1"
+  name="$2"
+  branch="$3"
+  dest="packages/$name"
+
+  [ -e "$dest/.git/HEAD" ] && return 0
+
+  # core.protectNTFS=false lets checkout proceed even for paths Windows can't
+  # represent (e.g. a dir named "Misc." — trailing dots/spaces get silently
+  # stripped by the Win32 API). That produces a mangled on-disk name that no
+  # longer matches the index, so git.fix_trailing_dot_paths cleans it up below.
+  case "$mode" in
+    clone)
+      git \
+        -c core.protectNTFS=false \
+        -c core.longpaths=true \
+        clone -b "$branch" --single-branch --depth=1 \
+        "$url/$name.git" "$dest"
+      ;;
+    submodule)
+      git \
+        -c core.protectNTFS=false \
+        -c core.longpaths=true \
+        submodule add --force \
+        --name "$name" \
+        -b "$branch" \
+        "$url/$name.git" "$dest"
+      ;;
+    *)
+      echo "git.pkg: unknown mode '$mode'" >&2
+      return 1
+      ;;
+  esac
+
+  git.fix_trailing_dot_paths "$dest"
+}
+
+# Windows can't check out paths with a trailing "." or " " in any component
+# (e.g. "Misc.") — the OS silently strips it, leaving a mangled dir that
+# perpetually shows as modified/deleted since it no longer matches the index.
+# Exclude those exact paths via sparse-checkout and remove the mangled leftovers.
+function git.fix_trailing_dot_paths() {
+  local dest="$1" gitdir badpaths mangled out part
+
+  # only Windows mangles these paths — no-op everywhere else
+  [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* || "$OSTYPE" == win32* ]] || return 0
+
+  gitdir=$(git -C "$dest" rev-parse --git-dir) || return 0
+
+	# find tracked paths with a component ending in "." or " "
+  badpaths=$(git -C "$dest" ls-tree -r --name-only HEAD | grep -E '(^|/)[^/]*[. ](/|$)')
+  [ -z "$badpaths" ] && return 0
+
+  echo "setup: $dest has paths Windows can't check out — excluding via sparse-checkout:" >&2
+  echo "  ${badpaths//$'\n'/$'\n'  }" >&2
+
+  # tell git to never check these exact paths out
+  git -C "$dest" sparse-checkout init --no-cone
+  { echo '/*'; echo "!/${badpaths//$'\n'/$'\n'!/}"; } > "$gitdir/info/sparse-checkout"
+
+	git -C "$dest" sparse-checkout reapply
+
+  # delete any leftover dir Windows already wrote under the stripped name
+  while IFS= read -r path; do
+    out=""
+
+    IFS='/' read -ra parts <<< "$path"
+    for part in "${parts[@]}"; do
+
+      # mirror what Windows does: strip trailing dots/spaces from each segment
+      while [[ "$part" == *. || "$part" == *' ' ]]; do
+				part="${part%.}"; part="${part% }"
+			done
+
+      out+="$part/"
+    done
+
+    mangled="$dest/${out%/}"
+    [ -e "$mangled" ] && rm -rf -- "$mangled"
+  done <<< "$badpaths"
+}
