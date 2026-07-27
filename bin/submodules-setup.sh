@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 bin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$bin_dir/setup-helpers.sh"
+source "$bin_dir/lib/git.sh"
 
 git.submodule.add maestrokit-crossplatform-testing main
 git.submodule.add maestro-web-sdk main
