@@ -1,0 +1,13 @@
+# ignore all by default to prevent accidental commits
+*
+
+!.gitignore
+!.gitmodules
+!package.json
+!.yarnrc.yml
+
+!bin/
+!bin/**
+
+!packages/
+!packages/**

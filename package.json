@@ -1,0 +1,20 @@
+{
+  "name": "maestrokit-crossplatform-testing-setup",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "postinstall": "bash bin/postinstall.sh",
+    "@android": "npm run -w packages/maestro-android-sdk",
+    "@roku": "npm run -w packages/maestro-roku-sdk",
+    "@swift": "npm run -w packages/maestro-swift-sdk",
+    "@crossplatform": "npm run -w packages/maestrokit-crossplatform-testing"
+  },
+  "packageManager": "yarn@4.17.1"
+}

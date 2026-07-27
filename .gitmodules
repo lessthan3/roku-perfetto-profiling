@@ -1,0 +1,16 @@
+[submodule "maestro-crossplatform-testing"]
+	path = packages/maestrokit-crossplatform-testing
+	url = https://github.com/lessthan3/maestrokit-crossplatform-testing.git
+	branch = main
+[submodule "maestro-roku-sdk"]
+	path = packages/maestro-roku-sdk
+	url = https://github.com/lessthan3/maestro-roku-sdk.git
+	branch = main
+[submodule "maestro-android-sdk"]
+	path = packages/maestro-android-sdk
+	url = https://github.com/lessthan3/maestro-android-sdk.git
+	branch = master
+[submodule "maestro-swift-sdk"]
+	path = packages/maestro-swift-sdk
+	url = https://github.com/lessthan3/maestro-swift-sdk.git
+	branch = develop
