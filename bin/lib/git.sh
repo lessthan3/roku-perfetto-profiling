@@ -45,6 +45,16 @@ function git.pkg()  {
   git.protectNTFS "$dest"
 }
 
+# Fetch and check out each submodule's tracked branch (from .gitmodules).
+# Submodules are normally left in detached HEAD at a pinned commit —
+# this puts them back on the branch listed for local development.
+function git.protectNTFS_all() {
+  # shellcheck disable=SC2016
+  git submodule foreach --quiet 'echo "$sm_path"' | while IFS= read -r path; do
+    git.protectNTFS "$path"
+  done
+}
+
 # Windows can't check out paths with a trailing "." or " " in any component
 # (e.g. "Misc.") — the OS silently strips it, leaving a mangled dir that
 # perpetually shows as modified/deleted since it no longer matches the index.
@@ -88,16 +98,6 @@ function git.protectNTFS() {
     mangled="$dest/${out%/}"
     if [ -e "$mangled" ]; then rm -rf -- "$mangled"; fi
   done <<< "$badpaths"
-}
-
-# Fetch and check out each submodule's tracked branch (from .gitmodules).
-# Submodules are normally left in detached HEAD at a pinned commit —
-# this puts them back on the branch listed for local development.
-function git.protectNTFS_all() {
-  # shellcheck disable=SC2016
-  git submodule foreach --quiet 'echo "$sm_path"' | while IFS= read -r path; do
-    git.protectNTFS "$path"
-  done
 }
 
 function git.checkout_branches() {

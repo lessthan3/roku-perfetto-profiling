@@ -2,6 +2,7 @@
 *
 
 !.gitignore
+!.gitattributes
 !.gitmodules
 !package.json
 !.yarnrc.yml
