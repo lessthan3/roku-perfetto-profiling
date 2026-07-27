@@ -106,6 +106,7 @@ function git.checkout_branches() {
     branch=$(git config -f "$toplevel/.gitmodules" "submodule.$name.branch")
     [ -z "$branch" ] && branch=main
     git fetch origin "$branch"
+    git update-ref "refs/remotes/origin/$branch" FETCH_HEAD
     git checkout -B "$branch" "origin/$branch"
   '
 
