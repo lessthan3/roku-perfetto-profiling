@@ -10,8 +10,8 @@
     "packages/*"
   ],
   "scripts": {
+    "setup": "bash bin/submodules-reset.sh",
     "postinstall": "bash bin/postinstall.sh",
-    "modules:reset": "bash bin/submodules-reset.sh",
     "@android": "npm run -w packages/maestro-android-sdk",
     "@roku": "npm run -w packages/maestro-roku-sdk",
     "@swift": "npm run -w packages/maestro-swift-sdk",

@@ -93,6 +93,13 @@ function git.protectNTFS() {
 # Fetch and check out each submodule's tracked branch (from .gitmodules).
 # Submodules are normally left in detached HEAD at a pinned commit —
 # this puts them back on the branch listed for local development.
+function git.protectNTFS_all() {
+  # shellcheck disable=SC2016
+  git submodule foreach --quiet 'echo "$sm_path"' | while IFS= read -r path; do
+    git.protectNTFS "$path"
+  done
+}
+
 function git.checkout_branches() {
   # shellcheck disable=SC2016 # $vars expand inside the per-submodule subshell foreach spawns, not here
   git submodule foreach --quiet '
@@ -102,8 +109,5 @@ function git.checkout_branches() {
     git checkout -B "$branch" "origin/$branch"
   '
 
-  # shellcheck disable=SC2016
-  git submodule foreach --quiet 'echo "$sm_path"' | while IFS= read -r path; do
-    git.protectNTFS "$path"
-  done
+  git.protectNTFS_all
 }
