@@ -8,7 +8,7 @@ if git submodule status | grep -q '^-'; then
   git \
     -c core.protectNTFS=false \
     -c core.longpaths=true \
-    submodule update --init --depth=1 --single-branch
+    submodule update --init --depth=1
 
   git.protectNTFS_all
 fi
