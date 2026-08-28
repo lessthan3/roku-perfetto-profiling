@@ -1,0 +1,5 @@
+{
+  "name": "org-audit",
+  "version": "1.0.3",
+  "description": "Audit how a feature is implemented across every repository in the org, using this repo's submodules as the working set."
+}
