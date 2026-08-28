@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Event Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Space+Mono:wght@400;700&display=swap">
+
+<style>
+  :root {
+    --ground: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-2: #F2F2EE;
+    --ink: #1A1D21;
+    --ink-2: #4A5158;
+    --ink-3: #767E86;
+    --rule: #E0E0DA;
+    --rule-2: #CFCFC7;
+    --accent: #0B6E99;
+    --accent-soft: #E4F1F7;
+    --risk: #B3402F;
+    --risk-soft: #FBEAE7;
+    --safe: #1F7A4D;
+    --safe-soft: #E6F4EC;
+    --measure: 72ch;
+
+    /* height of the sticky page-nav — everything that sticks below it offsets
+       by this, rather than each guessing its own magic number */
+    --nav-h: 51px;
+
+    /* the left rail's width and its gutter — the diagram bleed subtracts these
+       so a figure never grows underneath "On this page" */
+    --rail-w: 216px;
+    --rail-gap: 40px;
+
+    --c-para-nfl: #6E4FA3;
+    --c-para-nfl-soft: #F1ECF8;
+    --c-para-mma: #B0468A;
+    --c-para-mma-soft: #FAECF5;
+    --c-fox-stats: #C77A1F;
+    --c-fox-stats-soft: #FCF1E3;
+    --c-fox-keyplays: #A3811F;
+    --c-fox-keyplays-soft: #FAF5E3;
+    --c-espn: #2C6FB0;
+    --c-espn-soft: #EAF2FA;
+
+    --f-display: "Source Serif 4", Georgia, serif;
+    --f-body: "IBM Plex Sans", system-ui, sans-serif;
+    --f-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101418;
+      --surface: #161B21;
+      --surface-2: #1D242B;
+      --ink: #E8EAED;
+      --ink-2: #AEB6BD;
+      --ink-3: #7D858C;
+      --rule: #262E36;
+      --rule-2: #36404A;
+      --accent: #5AC8FA;
+      --accent-soft: #12242E;
+      --risk: #FF6B5E;
+      --risk-soft: #2B1714;
+      --safe: #4ADE80;
+      --safe-soft: #12251A;
+
+      --c-para-nfl: #B79CE0;
+      --c-para-nfl-soft: #241C33;
+      --c-para-mma: #E091C4;
+      --c-para-mma-soft: #331C2B;
+      --c-fox-stats: #F0AE5C;
+      --c-fox-stats-soft: #332411;
+      --c-fox-keyplays: #DCC169;
+      --c-fox-keyplays-soft: #302B12;
+      --c-espn: #7FB4E8;
+      --c-espn-soft: #16283A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101418;
+    --surface: #161B21;
+    --surface-2: #1D242B;
+    --ink: #E8EAED;
+    --ink-2: #AEB6BD;
+    --ink-3: #7D858C;
+    --rule: #262E36;
+    --rule-2: #36404A;
+    --accent: #5AC8FA;
+    --accent-soft: #12242E;
+    --risk: #FF6B5E;
+    --risk-soft: #2B1714;
+    --safe: #4ADE80;
+    --safe-soft: #12251A;
+
+    --c-para-nfl: #B79CE0;
+    --c-para-nfl-soft: #241C33;
+    --c-para-mma: #E091C4;
+    --c-para-mma-soft: #331C2B;
+    --c-fox-stats: #F0AE5C;
+    --c-fox-stats-soft: #332411;
+    --c-fox-keyplays: #DCC169;
+    --c-fox-keyplays-soft: #302B12;
+    --c-espn: #7FB4E8;
+    --c-espn-soft: #16283A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+  }
+
+  .col { max-width: var(--measure); }
+
+  /* ---------- masthead ---------- */
+
+  header.mast {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(34px, 5.2vw, 54px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+  }
+
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 28px;
+  }
+
+  .scope span {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border: 1px solid var(--rule-2);
+    border-radius: 2px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- structure ---------- */
+
+  section { margin-bottom: 96px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+    scroll-margin-top: 76px;
+  }
+
+  .sec-note {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 24px;
+  }
+
+  h3 {
+    font-family: var(--f-body);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.005em;
+    margin: 52px 0 14px;
+  }
+
+  h4.subhead {
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 34px 0 10px;
+  }
+
+  p { margin: 0 0 18px; }
+  .col p { max-width: var(--measure); }
+
+  code {
+    font-family: var(--f-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible,
+  details:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- evidence table ---------- */
+
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 24px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 640px;
+  }
+
+  th {
+    text-align: left;
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    color: var(--ink-2);
+  }
+
+  tr:last-child td { border-bottom: 0; }
+  td strong { color: var(--ink); font-weight: 600; }
+
+  td.mono, th.mono { font-family: var(--f-mono); font-size: 12.5px; }
+
+  /* ---------- divergence specimens ---------- */
+
+  .split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 22px 0;
+  }
+
+  .spec {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .spec-head {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 9px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  .spec-head b { color: var(--ink); font-weight: 700; }
+
+  .spec pre {
+    margin: 0;
+    padding: 14px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .out {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    padding: 9px 14px;
+    border-top: 1px dashed var(--rule-2);
+    color: var(--ink-3);
+  }
+  .out b { font-weight: 700; }
+  .out.bad b { color: var(--risk); }
+  .out.ok b { color: var(--safe); }
+
+  /* ---------- callout ---------- */
+
+  .flag {
+    border-left: 3px solid var(--risk);
+    background: var(--risk-soft);
+    padding: 16px 20px;
+    margin: 24px 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .flag p { margin: 0; max-width: none; }
+
+  .flag .lbl {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--risk);
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 700;
+  }
+
+  .flag pre {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    margin: 10px 0 0;
+    overflow-x: auto;
+    color: var(--ink);
+  }
+
+  /* ---------- model block ---------- */
+
+  .model {
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 20px 0;
+    overflow: hidden;
+  }
+
+  .model-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--accent-soft);
+  }
+
+  .model-head h4 {
+    font-family: var(--f-mono);
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 3px;
+    color: var(--ink);
+  }
+
+  .model-head span {
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .model pre {
+    margin: 0;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  .sourced {
+    padding: 11px 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
+  .sourced b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 28px 0;
+    padding: 0;
+  }
+
+  figure .figframe {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 24px 20px;
+    overflow-x: auto;
+  }
+
+  /* scoped off the arrow overlay, which is absolutely positioned and sized in JS */
+  figure svg:not(.dgm-arrows) {
+    display: block;
+    width: 100%;
+    min-width: 660px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figure .dgm { color: var(--ink); }
+
+  figcaption {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    margin-top: 12px;
+    max-width: 68ch;
+  }
+
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+
+  figure.map svg:not(.dgm-arrows) { min-width: 720px; }
+
+  /* ---------- div-based diagrams ---------- */
+
+  /* the stage is the arrow overlay's coordinate space — the SVG is stretched to
+     these bounds, so it must be the positioned ancestor */
+  .dgm {
+    position: relative;
+    display: grid;
+    gap: 18px 64px;
+    align-items: start;
+    min-width: 0;
+  }
+
+  /* arrows sit behind the cards so a curve never crosses over text */
+  svg.dgm-arrows {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 0;
+    min-width: 0;
+  }
+
+  .dgm > * { position: relative; z-index: 1; }
+
+  .dgm-card {
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+    padding: 12px 14px;
+    background: var(--surface);
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ink);
+    min-width: 0;
+  }
+
+  /* text wraps instead of overflowing — the whole point of moving off SVG */
+  .dgm-card p,
+  .dgm-card .dgm-title,
+  .dgm-card .dgm-note {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .dgm-card p + p { margin-top: 3px; }
+
+  .dgm-title {
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    margin-bottom: 7px !important;
+  }
+
+  .dgm-card .dgm-face {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .dgm-note { font-size: 9.5px; opacity: 0.7; margin-top: 4px !important; }
+  .dgm-note.risk { color: var(--risk); opacity: 1; }
+  .dgm-note.good { color: var(--safe); opacity: 1; }
+
+  .dgm-sub { opacity: 0.7; }
+
+  /* client-coloured source card: tinted fill plus the left spine bar */
+  .dgm-card[data-client] {
+    background: var(--client-soft);
+    border-color: var(--client);
+    border-left: 6px solid var(--client);
+  }
+
+  .dgm-card[data-client] .dgm-title { color: var(--client); }
+
+  /* a rule between two feeds sharing one card (Fox stats / keyplays) */
+  .dgm-split {
+    border-top: 1px solid currentColor;
+    opacity: 0.25;
+    margin: 9px 0;
+  }
+
+  /* the shared-model / target column */
+  .dgm-target {
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .dgm-field {
+    background: var(--accent-soft);
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .dgm-field.ghost {
+    background: none;
+    border: 1px solid var(--rule-2);
+    font-weight: 400;
+    font-size: 10px;
+    opacity: 0.75;
+  }
+
+  .dgm-field .dgm-sub {
+    display: block;
+    font-weight: 400;
+    font-size: 9.5px;
+    margin-top: 3px;
+  }
+
+  /* the accent-bordered normalizer / boundary box */
+  .dgm-accent {
+    border: 1.6px solid var(--accent);
+    border-radius: 3px;
+    background: var(--accent-soft);
+    padding: 12px 14px;
+    text-align: center;
+    font-family: var(--f-mono);
+    color: var(--accent);
+    min-width: 0;
+  }
+
+  .dgm-accent b { display: block; font-size: 11.5px; line-height: 1.5; }
+  .dgm-accent span { display: block; font-size: 9.5px; opacity: 0.85; margin-top: 4px; overflow-wrap: anywhere; }
+
+  /* the shared-normalizer box lists two symbols then annotates them — a rule
+     keeps the names from reading as one run-on title */
+  .dgm-accent.is-filled b + b { margin-top: 2px; }
+
+  .dgm-accent.is-filled b + span,
+  .dgm-accent .dgm-accent-foot {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid currentColor;
+    opacity: 0.7;
+  }
+
+  .dgm-accent .dgm-accent-foot { margin-top: 6px; padding-top: 6px; }
+
+  .dgm-colhead {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 1.3px;
+    opacity: 0.55;
+    margin: 0 0 10px;
+  }
+
+  .dgm-colhead.accent { color: var(--accent); opacity: 1; }
+
+  .dgm-footnote {
+    grid-column: 1 / -1;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    color: var(--risk);
+    background: var(--risk-soft);
+    border-radius: 3px;
+    padding: 8px 12px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Column templates per figure.
+     Tracks are 1fr but the cards inside are width-capped, so the surplus falls
+     into the gutter rather than stretching the boxes — that's the room the
+     arrows need to read as connections rather than short stubs. */
+  .dgm.cols-3,
+  .dgm.cols-mid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dgm.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* cap the card width and centre it in its track */
+  .dgm-stack,
+  .dgm-target,
+  .dgm-accent {
+    max-width: 330px;
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .dgm.cols-mid .dgm-accent { max-width: 220px; }
+
+  /* explicit placement — auto-placement reorders columns once a spanning item
+     is in play, which put the sources to the right of their own normalizer */
+  .dgm > .dgm-col-1 { grid-column: 1; }
+  .dgm > .dgm-col-2 { grid-column: 2; }
+  .dgm > .dgm-col-3 { grid-column: 3; }
+
+  /* a middle/target column spans every source row beside it */
+  .dgm-span { grid-row: 1 / -1; align-self: center; }
+
+  .dgm-stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  figure.dgm-figure .figframe { overflow-x: hidden; }
+
+  /* Diagrams read wider than the prose. The text column is capped at a
+     comfortable measure, but a field map with five source clusters needs the
+     room — so the figure bleeds out of .wrap toward the viewport edges,
+     clamped so it never exceeds the window or collapses below the wrap width. */
+  figure.dgm-figure {
+    /* how much room actually exists outside .wrap, measured off the wrap's own
+       box rather than 100vw — vw includes the scrollbar, which pushed the
+       figure past the left edge on any window narrow enough to need one */
+    margin-inline: calc(var(--fig-bleed, 0px) * -1);
+  }
+
+  .dgm-card[data-client] { cursor: pointer; transition: opacity 0.15s ease; }
+  .dgm-card[data-client]:hover { border-color: var(--client); box-shadow: 0 0 0 1px var(--client); }
+
+  svg.dgm-arrows path { transition: opacity 0.15s ease; }
+
+  /* dim a toggled-off client — divs and their arrows alike */
+  .wrap[data-client-para-nfl="off"] [data-client="para-nfl"],
+  .wrap[data-client-para-mma="off"] [data-client="para-mma"],
+  .wrap[data-client-fox-stats="off"] [data-client="fox-stats"],
+  .wrap[data-client-fox-keyplays="off"] [data-client="fox-keyplays"],
+  .wrap[data-client-espn="off"] [data-client="espn"] {
+    opacity: 0.12;
+  }
+
+  /* stack to one column on narrow screens; arrows redraw to match */
+  @media (max-width: 900px) {
+    .dgm.cols-3,
+    .dgm.cols-2,
+    .dgm.cols-mid { grid-template-columns: minmax(0, 1fr); }
+    .dgm-span { grid-row: auto; }
+  }
+
+  .maplegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 0 0 18px;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface-2);
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  .maplegend i {
+    font-style: normal;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .maplegend .swatch {
+    width: 22px;
+    height: 0;
+    border-top: 2px solid var(--ink-3);
+    display: inline-block;
+  }
+  .maplegend .swatch.fallback { border-top-style: dashed; }
+  .maplegend .swatch.gap { border-top-color: var(--risk); border-top-style: dotted; }
+
+  .clientlegend-bar {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 10;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-bottom: 6px;
+    background: transparent;
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .clientlegend-bar.is-stuck {
+    background: var(--accent-soft);
+    border-bottom-color: var(--rule);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  /* the bar is full-bleed, but its contents line up with the text column —
+     which sits past the section rail, not centred in the viewport */
+  .clientlegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 1328px;
+    margin: 0 auto;
+    padding: 22px 32px;
+    padding-left: calc(32px + var(--rail-w) + var(--rail-gap));
+  }
+
+  /* rail hidden — the text column recentres, so the legend follows it */
+  @media (max-width: 1024px) {
+    .clientlegend {
+      max-width: 1080px;
+      padding-left: 32px;
+    }
+  }
+
+  .client-btn {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 20px;
+    padding: 5px 12px 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .client-btn:hover { border-color: var(--dot); }
+  .client-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .client-btn .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex: none;
+    background: var(--dot);
+  }
+
+  .client-btn[aria-pressed="false"],
+  .client-btn.wave-off {
+    opacity: 0.45;
+    background: transparent;
+  }
+
+  .client-btn[aria-pressed="false"] .dot,
+  .client-btn.wave-off .dot {
+    background: transparent;
+    border: 1.5px solid var(--dot);
+  }
+
+  .maphint {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin: 0 0 18px;
+  }
+
+  figure.map .dgm-card[data-client] {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .wrap[data-client-para-nfl="off"] figure.map svg [data-client="para-nfl"],
+  .wrap[data-client-para-mma="off"] figure.map svg [data-client="para-mma"],
+  .wrap[data-client-fox-stats="off"] figure.map svg [data-client="fox-stats"],
+  .wrap[data-client-fox-keyplays="off"] figure.map svg [data-client="fox-keyplays"],
+  .wrap[data-client-espn="off"] figure.map svg [data-client="espn"] {
+    opacity: 0.12;
+  }
+
+  /* ---------- phases ---------- */
+
+  ol.phases {
+    counter-reset: p;
+    list-style: none;
+    padding: 0;
+    margin: 24px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* direct children only — a bare descendant selector also caught the <li>s
+     inside each phase's own ul.plain, turning every nested bullet into a
+     44px-column grid that wrapped <code> to a few characters per line */
+  ol.phases > li {
+    counter-increment: p;
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 18px;
+    padding: 26px 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+
+  ol.phases > li::before {
+    content: counter(p);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+
+  ol.phases > li > div h3 { margin: 0 0 4px; font-size: 18px; }
+  ol.phases p { margin: 0; color: var(--ink-2); font-size: 14.5px; max-width: 64ch; }
+
+  ul.plain { padding-left: 20px; margin: 0 0 20px; max-width: var(--measure); }
+  ul.plain li { margin-bottom: 9px; color: var(--ink-2); }
+  ul.plain li strong { color: var(--ink); font-weight: 600; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px 80px; }
+    header.mast { padding-top: 44px; }
+  }
+
+  /* ---------- page nav ---------- */
+
+  nav.pagenav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  nav.pagenav .pagenav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  nav.pagenav a {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 14px 14px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+
+  nav.pagenav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.pagenav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  nav.pagenav a.is-active {
+    color: var(--accent);
+    font-weight: 700;
+    border-bottom-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ---------- page layout with section rail ---------- */
+
+  .pagegrid {
+    max-width: 1328px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    gap: var(--rail-gap);
+    align-items: start;
+  }
+
+  .pagegrid .wrap {
+    padding: 0;
+    max-width: 1080px;
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .pagegrid nav.sectionnav {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* ---------- section nav (sidebar TOC) ---------- */
+
+  nav.sectionnav {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--legend-h, 0px) + 20px);
+    padding: 20px 20px 20px 0;
+    border-right: 1px solid var(--rule);
+    max-height: calc(100vh - var(--nav-h) - var(--legend-h, 0px) - 40px);
+    overflow-y: auto;
+    transition: top 0.15s ease;
+  }
+
+  nav.sectionnav .sectionnav-label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  nav.sectionnav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  nav.sectionnav a {
+    display: block;
+    font-family: var(--f-body);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 7px 10px;
+    border-radius: 3px;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  nav.sectionnav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.sectionnav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  nav.sectionnav a.is-active {
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+
+  /* ---------- closing / next-page nav ---------- */
+
+  .pagefoot-next {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    margin-top: 8px;
+  }
+
+  .pagefoot-next a {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .pagefoot-next a:hover { text-decoration: underline; }
+
+  @media (max-width: 1024px) {
+    .pagegrid {
+      display: block;
+      max-width: 1080px;
+    }
+
+    nav.sectionnav { display: none; }
+  }
+
+  /* dim a toggled-off destination — its card, and every arrow arriving at it */
+  .wrap[data-client-maestro="off"] [data-client="maestro"],
+  .wrap[data-client-maestro="off"] [data-client-to="maestro"],
+  .wrap[data-client-fox="off"] [data-client="fox"],
+  .wrap[data-client-fox="off"] [data-client-to="fox"],
+  .wrap[data-client-adobe="off"] [data-client="adobe"],
+  .wrap[data-client-adobe="off"] [data-client-to="adobe"] {
+    opacity: 0.12;
+  }
+</style>
+</head>
+
+<body>
+
+<nav class="pagenav">
+  <div class="pagenav-inner">
+      <a href="../index.html">1. Context &amp; Problem</a>
+      <a href="02-shared-models.html">2. Shared Models</a>
+      <a href="03-theme-model.html">3. Theme Model</a>
+      <a href="04-event-model.html">4. Event Model</a>
+  </div>
+</nav>
+
+<div class="pagegrid">
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">maestro-sdk &middot; event model</p>
+    <h1>The Event Model</h1>
+    <p class="standfirst">One <code>Track.Event</code> per interaction, described in a vocabulary every destination is shaped from. <b>The vocabulary is fixed. The payload is the destination&rsquo;s.</b> A surface reports that a card was engaged, and each destination receives whatever that means on its own wire.</p>
+    <p class="standfirst" style="margin-top: 18px; font-size: 16px;"><a href="02-shared-models.html#the-proposed-models">Chapter 5</a> resolves a client&rsquo;s vocabulary on the way in. This one defers a destination&rsquo;s until the way out. A surface never names a wire key, and an emitter never sees anything but a finished event.</p>
+    <div class="scope">
+      <span>action &middot; cause</span>
+      <span>surface &middot; target</span>
+      <span>props &middot; context</span>
+    </div>
+  </header>
+
+  <section>
+    <h2 id="denormalization">Denormalization</h2>
+    <p class="sec-note">One event in, one spec per destination out</p>
+
+    <div class="col">
+      <p>Normalization collapses many spellings into one. <b>Denormalization is that run backwards</b> &mdash; one model field expanded into whatever each destination calls it, wherever each destination puts it.</p>
+      <p>An emitter is a spec for one destination, and it is the only place that destination&rsquo;s spelling exists. Given a finished event it decides four things and nothing else:</p>
+      <ul class="plain">
+        <li><b>Which key</b> a model field lands under, and whether it lands at all &mdash; a destination takes what it asked for and ignores the rest.</li>
+        <li><b>How a value spells out</b> &mdash; an enum as one destination&rsquo;s tokens, a duration as seconds or as milliseconds, an id as a scalar or a list.</li>
+        <li><b>What absence looks like</b> &mdash; a sentinel, an empty string, or an omitted key.</li>
+        <li><b>Which constants</b> ride along &mdash; values that describe the destination rather than the event.</li>
+      </ul>
+      <p>None of that reaches the event. Two destinations that want the same fact under different names are two rows in two emitters, not two fields on the model.</p>
+    </div>
+
+    <div id="legend-sentinel"></div>
+    <div class="clientlegend-bar" id="clientlegend-bar">
+    <div class="clientlegend" id="client-toggle" role="group" aria-label="Toggle destination visibility in the denormalization diagram">
+      <button type="button" class="client-btn" data-client="maestro" style="--dot: var(--accent);" aria-pressed="true"><span class="dot"></span> Emit.maestro</button>
+      <button type="button" class="client-btn" data-client="fox" style="--dot: var(--c-fox-stats);" aria-pressed="true"><span class="dot"></span> Emit.fox</button>
+      <button type="button" class="client-btn" data-client="adobe" style="--dot: var(--c-para-nfl);" aria-pressed="true"><span class="dot"></span> Emit.adobe</button>
+    </div>
+    </div>
+    <p class="maphint">Click a destination to dim it, in the legend or on the card itself.</p>
+
+    <figure class="map dgm-figure">
+      <div class="figframe">
+        <div class="dgm cols-2">
+          <svg class="dgm-arrows" aria-hidden="true"></svg>
+
+          <div class="dgm-target dgm-col-1" data-node="ev-model">
+            <p class="dgm-colhead">TRACK.EVENT</p>
+
+            <div class="dgm-field" data-from="ev-act" data-to="mz-e1,ad-name" data-color-by="target">action</div>
+            <div class="dgm-field" data-from="ev-rol" data-to="mz-e2,ad-col" data-color-by="target">surface.role</div>
+            <div class="dgm-field" data-from="ev-snm" data-to="mz-e4,ad-sub" data-color-by="target">surface.name</div>
+            <div class="dgm-field" data-from="ev-six" data-to="ad-subn" data-color-by="target">surface.index</div>
+            <div class="dgm-field" data-from="ev-tid" data-to="mz-ent,fx-lst" data-color-by="target">targets[0].id</div>
+            <div class="dgm-field" data-from="ev-tnm" data-to="mz-card,fx-btn,ad-row" data-color-by="target">targets[0].name</div>
+            <div class="dgm-field" data-from="ev-tix" data-to="mz-cidx,ad-rown" data-color-by="target">targets[0].index</div>
+            <div class="dgm-field" data-from="ev-pha" data-to="mz-gs" data-color-by="target">contest.status.phase</div>
+            <div class="dgm-field" data-from="ev-dur" data-to="mz-vis,ad-el" data-color-by="target">props.span.durationMs</div>
+
+            <p class="dgm-note">one shape, whatever each destination calls it</p>
+          </div>
+
+          <div class="dgm-stack dgm-col-2">
+            <p class="dgm-colhead accent">EMITTERS &middot; ONE SPEC PER DESTINATION</p>
+
+            <div class="dgm-card" data-client="maestro" data-color="--accent" style="--client: var(--accent); --client-soft: var(--accent-soft);">
+              <p class="dgm-title dgm-face">Emit.maestro</p>
+              <p data-node="mz-e1">e1_phylum</p>
+              <p data-node="mz-e2">e2_class</p>
+              <p data-node="mz-e4">e4_family</p>
+              <p data-node="mz-ent">entity_id</p>
+              <p data-node="mz-card">card</p>
+              <p data-node="mz-cidx">card_index</p>
+              <p data-node="mz-gs">game_state &mdash; pre | in | post</p>
+              <p data-node="mz-vis">visibility_duration_timer</p>
+              <p class="dgm-note">absent &rarr; a sentinel</p>
+            </div>
+
+            <div class="dgm-card" data-client="fox" data-color="--c-fox-stats" style="--client: var(--c-fox-stats); --client-soft: var(--c-fox-stats-soft);">
+              <p class="dgm-title dgm-face">Emit.fox</p>
+              <p data-node="fx-lst">listing_id</p>
+              <p data-node="fx-btn">button_text</p>
+              <p class="dgm-note">takes two fields and ignores the rest</p>
+              <p class="dgm-note">absent &rarr; the key is omitted</p>
+            </div>
+
+            <div class="dgm-card" data-client="adobe" data-color="--c-para-nfl" style="--client: var(--c-para-nfl); --client-soft: var(--c-para-nfl-soft);">
+              <p class="dgm-title dgm-face">Emit.adobe</p>
+              <p data-node="ad-name">the trackAction name</p>
+              <p data-node="ad-col">columnHeaderTitle</p>
+              <p data-node="ad-sub">subColumnHeaderTitle</p>
+              <p data-node="ad-subn">subColNum</p>
+              <p data-node="ad-row">rowHeaderTitle</p>
+              <p data-node="ad-rown">posRowNum</p>
+              <p data-node="ad-el">elapsedTime &mdash; seconds</p>
+              <p class="dgm-note">absent &rarr; an empty string</p>
+              <p class="dgm-note">plus constants the event never carries</p>
+            </div>
+          </div>
+
+          <p class="dgm-footnote">a destination that wants a fact the event does not carry &rarr; add the field to Track.* &rarr; every destination can have it</p>
+        </div>
+      </div>
+      <figcaption><b>One event, three specs.</b> Each arm is coloured for the destination it arrives at &mdash; follow one colour to see everything that destination takes, or one row to see what a single model field becomes.
+        <ul class="plain">
+          <li><b><code>targets[0].name</code> lands three times under three names</b> &mdash; a card, a button label, a row title. It is one fact, so a surface reports it once.</li>
+          <li><b><code>targets[0].id</code> splits by destination</b> &mdash; an entity to one, a listing to another. Neither name belongs on the model.</li>
+          <li><b><code>action</code> reaches Adobe as the call itself</b>, not as a field. A destination is free to encode a model value in its event name.</li>
+          <li><b><code>contest.status.phase</code> lands once.</b> The other two destinations do not ask for it, so nothing spells it out for them.</li>
+        </ul>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2 id="shape">Shape</h2>
+    <p class="sec-note">Six parts, one object</p>
+
+    <div class="flag" style="border-left-color: var(--safe); background: var(--safe-soft);">
+      <span class="lbl" style="color: var(--safe);">Track.Event</span>
+      <pre>action   what happened      view &middot; focus &middot; blur &middot; engage &middot; expand
+                           collapse &middot; dismiss &middot; start &middot; end &middot; heartbeat
+cause    what caused it     user &middot; dwell &middot; timer &middot; system
+surface  where it happened  kind &middot; role &middot; variant &middot; id &middot; name &middot; template &middot; index
+targets  what it landed on  kind &middot; id &middot; name &middot; list &middot; index
+props    action-specific    declared per role
+context  ambient            session &middot; page &middot; contest &middot; device
+at       when               ms since epoch</pre>
+    </div>
+
+    <div class="col">
+      <p>Every destination is fed from this one object. A destination that needs a value the event does not carry is the signal to add a field &mdash; for every destination at once &mdash; not to grow a payload beside it.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="action">Action</h2>
+    <p class="sec-note">The verb, and nothing else</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Action</th><th>Means</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>view</code></td><td>became visible</td></tr>
+          <tr><td><code>focus</code></td><td>focus arrived</td></tr>
+          <tr><td><code>blur</code></td><td>focus left &mdash; carries <code>props.span.durationMs</code></td></tr>
+          <tr><td><code>engage</code></td><td>acted on</td></tr>
+          <tr><td><code>expand</code> &middot; <code>collapse</code></td><td>opened or closed in place</td></tr>
+          <tr><td><code>dismiss</code></td><td>closed or removed</td></tr>
+          <tr><td><code>start</code> &middot; <code>end</code></td><td>a lifecycle boundary</td></tr>
+          <tr><td><code>heartbeat</code></td><td>a periodic liveness signal</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p><code>expand</code> and <code>collapse</code> are verbs rather than a string carried by <code>engage</code>, so there is exactly one place to ask whether something was expanded.</p>
+      <p>An action never names its surface. <code>engage</code> on a panel and <code>engage</code> on an overlay are the same verb, so the list does not grow when a surface kind is added.</p>
+      <p><code>focus</code> and <code>blur</code> are a pair. A dwell span is two events with one duration, not a bespoke shape per destination.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="cause">Cause</h2>
+    <p class="sec-note">Why the event fired</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Cause</th><th>Means</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>user</code></td><td>a remote press or a click</td></tr>
+          <tr><td><code>dwell</code></td><td>focus settled past a threshold</td></tr>
+          <tr><td><code>timer</code></td><td>a timecode, an interval, a debounce fallback</td></tr>
+          <tr><td><code>system</code></td><td>visibility, lifecycle, data arrival</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p>Every event answers it. Without <code>cause</code>, an automatic view and a deliberate one are the same event, and a destination that wants them separated has to be given two event names.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="surface">Surface</h2>
+    <p class="sec-note">The region of UI the event happened in</p>
+
+    <div class="flag" style="border-left-color: var(--accent); background: var(--accent-soft);">
+      <span class="lbl" style="color: var(--accent);">Track.Surface</span>
+      <pre>kind      sdk &middot; page &middot; pinchback &middot; panel &middot; overlay &middot; module
+role      stats &middot; keyPlays &middot; betting &middot; fantasy
+          commerce &middot; multiView &middot; broadcast
+variant   "" unless one client ships two of a role
+id        the instance
+name      the authored name
+template  the authored template the instance came from
+index     position among sibling surfaces on the page</pre>
+    </div>
+
+    <div class="col">
+      <p><b><code>role</code> is the shared vocabulary; the component name is not.</b> A stats panel is <code>role: stats</code> in every client. Which component implements it is the client&rsquo;s business, and the destination&rsquo;s name for it is the emitter&rsquo;s.</p>
+      <p><code>variant</code> exists only where one client ships two surfaces of a role &mdash; a fight stats panel and a football stats panel are both <code>stats</code>.</p>
+      <p>An overlay and a panel can share a role. Betting is betting whichever surface kind presents it.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="target">Target</h2>
+    <p class="sec-note">What inside the surface the action landed on</p>
+
+    <div class="flag" style="border-left-color: var(--accent); background: var(--accent-soft);">
+      <span class="lbl" style="color: var(--accent);">Track.Target</span>
+      <pre>kind   card &middot; cta &middot; tab &middot; play &middot; stream &middot; product &middot; bet &middot; surface
+id     the entity
+name   the label
+list   which list within the surface; "" for the primary
+index  position within that list; -1 when position has no meaning</pre>
+    </div>
+
+    <div class="col">
+      <p><code>id</code> and <code>name</code> are both carried, so no call site chooses between identifying a thing and labelling it. A destination that wants one takes one.</p>
+      <p><code>targets</code> is a list. An action on several streams is several targets, not a field whose type changes with the event.</p>
+      <p><code>kind: surface</code> covers an action whose object is another surface &mdash; opening a panel is an <code>engage</code> whose target is that panel.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="props">Props</h2>
+    <p class="sec-note">Facts specific to what happened, declared per role rather than pooled</p>
+
+    <div class="flag" style="border-left-color: var(--rule-2); background: var(--surface-2);">
+      <span class="lbl" style="color: var(--ink-2);">Track.Props</span>
+      <pre>Span      durationMs
+Text      text &middot; ctaText &middot; data
+Betting   inGameBets &middot; totalBets &middot; betType
+Fantasy   teamsManaged
+Commerce  entityType &middot; entityName &middot; price &middot; sale
+Play      playType &middot; description &middot; sportUri
+Layout    layoutType</pre>
+    </div>
+
+    <div class="col">
+      <p><code>Span</code> and <code>Text</code> are available to any role. The rest attach to the role that means them.</p>
+      <p>A value a surface cannot express in its role&rsquo;s props is the signal to add one, for every client that has that role.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="context">Context</h2>
+    <p class="sec-note">The ambient facts, resolved once when the event is built</p>
+
+    <div class="flag" style="border-left-color: var(--accent); background: var(--accent-soft);">
+      <span class="lbl" style="color: var(--accent);">Track.Context</span>
+      <pre>client      espn &middot; fox &middot; paramount
+sdkVersion
+viewerId
+session     { sdk, page, pinchback }
+page        { eventId, league, sport, airing }
+contest     as Stats.Contest
+device      { orientation }</pre>
+    </div>
+
+    <div class="col">
+      <p><b><code>contest</code> is the shared inbound model.</b> <code>contest.status.phase</code> is the <code>Stats.Phase</code> of chapter 5, so the lifecycle has one encoding across both directions and every client carries it without restating it.</p>
+      <p>Context is captured at construction, not merged in at dispatch. An event that already knows its own page can be queued, replayed, or delivered to a second destination without being rebuilt.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="emitters">Emitters</h2>
+    <p class="sec-note">One per destination, owning the four decisions and nothing else</p>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>Emit</b><span>one call per destination</span></div>
+<pre>Emit.maestro(event)   ' the taxonomy envelope plus metadata
+Emit.fox(event)       ' the host SDK&rsquo;s own callback shape
+Emit.adobe(event)     ' a trackAction call and its cdata</pre>
+        <div class="out ok">Nothing upstream changes</div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>Direction of travel</b><span>one way, always</span></div>
+<pre>event  &rarr;  emitter  &rarr;  payload
+
+no field a surface fills
+on an emitter&rsquo;s behalf
+
+no hook by which one
+destination&rsquo;s needs alter
+another&rsquo;s output</pre>
+        <div class="out ok">Destinations stay independent</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <p>Adding a destination is one emitter. It changes nothing about the event, and nothing about any other destination.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="routing">Routing</h2>
+    <p class="sec-note">A client declares which emitters it runs and what each one wants</p>
+
+    <div class="flag" style="border-left-color: var(--rule-2); background: var(--surface-2);">
+      <span class="lbl" style="color: var(--ink-2);">clients</span>
+      <pre>fox:
+  emit:
+    maestro: all
+    fox:
+      - { action: [engage, expand, collapse], target: cta }
+
+paramount:
+  emit:
+    maestro: all
+    adobe:
+      - { surface: panel, role: stats }</pre>
+    </div>
+
+    <div class="col">
+      <p>Every client runs <code>maestro</code>. A client that also has its own analytics runs a second emitter named for that destination &mdash; which is why <code>fox</code> appears at both levels: the client, and the destination it forwards to.</p>
+      <p>A UI fact is reported once. Every destination that subscribes to it gets it, in its own shape, without a second report being written by hand.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="use">Use</h2>
+    <p class="sec-note">Surfaces name model values; nothing else knows a wire key</p>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>Surface</b><span>reports the fact</span></div>
+<pre>Track.emit(m.top, Action.engage, {
+  target: Track.card(item.id, item.title, index)
+})
+
+Track.emit(m.top, Action.expand, {
+  target: Track.cta("See All Stats")
+})</pre>
+        <div class="out ok">Portable across destinations</div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>Resolved for it</b><span>never authored at the call site</span></div>
+<pre>action   from the interaction
+cause    from the interaction
+surface  from where the event was raised
+context  from where the event was raised</pre>
+        <div class="out ok">The surface supplies only what it knows</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <p>Only an emitter names a wire key, a sentinel, or a destination&rsquo;s constant. A surface that cannot say what it means in the model is the signal to extend the model &mdash; for every destination at once &mdash; not to reach past it.</p>
+    </div>
+  </section>
+
+<p class="pagefoot-next"><a href="../index.html">&larr; Back to Context &amp; Problem</a></p>
+
+</div>
+
+<nav class="sectionnav" aria-label="Sections on this page">
+  <p class="sectionnav-label">On this page</p>
+  <ul>
+      <li><a href="#denormalization">Denormalization</a></li>
+      <li><a href="#shape">Shape</a></li>
+      <li><a href="#action">Action</a></li>
+      <li><a href="#cause">Cause</a></li>
+      <li><a href="#surface">Surface</a></li>
+      <li><a href="#target">Target</a></li>
+      <li><a href="#props">Props</a></li>
+      <li><a href="#context">Context</a></li>
+      <li><a href="#emitters">Emitters</a></li>
+      <li><a href="#routing">Routing</a></li>
+      <li><a href="#use">Use</a></li>
+  </ul>
+</nav>
+</div>
+
+<script src="shared.js"></script>
+<script src="diagram-arrows.js"></script>
+<script>
+  var wrap = document.querySelector('.wrap');
+  var legend = document.getElementById('client-toggle');
+  var legendButtons = Array.prototype.slice.call(legend.querySelectorAll('.client-btn'));
+
+  function setClientOn(client, on) {
+    var btn = legend.querySelector('.client-btn[data-client="' + client + '"]');
+    if (btn) btn.setAttribute('aria-pressed', String(on));
+
+    var attr = 'data-client-' + client;
+    if (on) {
+      wrap.removeAttribute(attr);
+    } else {
+      wrap.setAttribute(attr, 'off');
+    }
+  }
+
+  function toggleClient(client) {
+    var btn = legend.querySelector('.client-btn[data-client="' + client + '"]');
+    var isOn = btn ? btn.getAttribute('aria-pressed') === 'true' : true;
+    setClientOn(client, !isOn);
+  }
+
+  legend.addEventListener('click', function (e) {
+    var btn = e.target.closest('.client-btn');
+    if (btn) toggleClient(btn.dataset.client);
+  });
+
+  // every emitter card in the diagram is also a toggle for its destination
+  var clientNames = { maestro: 'Emit.maestro', fox: 'Emit.fox', adobe: 'Emit.adobe' };
+
+  document.querySelectorAll('figure.map .dgm-card[data-client]').forEach(function (card) {
+    var client = card.dataset.client;
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', 'Toggle ' + (clientNames[client] || client));
+
+    card.addEventListener('click', function () { toggleClient(client); });
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleClient(client);
+      }
+    });
+  });
+
+  // start every destination OFF so the intro wave has something real to press
+  legendButtons.forEach(function (btn) { setClientOn(btn.dataset.client, false); });
+
+  // one-time intro: presses each button on in turn, then all on — shows the
+  // toggle is real before the reader has to guess
+  (function () {
+    var STEP_MS = 650;
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var played = false;
+
+    function allOn() {
+      legendButtons.forEach(function (btn) { setClientOn(btn.dataset.client, true); });
+    }
+
+    function runWave() {
+      if (played) return;
+      played = true;
+
+      if (reduceMotion) { allOn(); return; }
+
+      legendButtons.forEach(function (btn, i) {
+        var client = btn.dataset.client;
+        setTimeout(function () { setClientOn(client, true); }, (i + 1) * STEP_MS);
+        setTimeout(function () { setClientOn(client, false); }, (i + 2) * STEP_MS);
+      });
+
+      setTimeout(allOn, (legendButtons.length + 1) * STEP_MS);
+    }
+
+    if (!('IntersectionObserver' in window)) { allOn(); return; }
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          runWave();
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0.6 });
+
+    observer.observe(legend);
+  })();
+
+  // the legend bar only gets its tinted background once it's actually stuck to
+  // the top of the viewport, not while it's still inline in the page flow
+  (function () {
+    var sentinel = document.getElementById('legend-sentinel');
+    var bar = document.getElementById('clientlegend-bar');
+    if (!sentinel || !bar || !('IntersectionObserver' in window)) return;
+
+    function setStuck(isStuck) {
+      bar.classList.toggle('is-stuck', isStuck);
+
+      var height = isStuck ? Math.round(bar.getBoundingClientRect().height) : 0;
+      document.documentElement.style.setProperty('--legend-h', height + 'px');
+    }
+
+    // "not intersecting" is also true while the sentinel is below the fold, so
+    // check which side it left — the bar is pinned only once it scrolls off the TOP
+    var stickObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var scrolledPast = entry.boundingClientRect.top < 0;
+        setStuck(!entry.isIntersecting && scrolledPast);
+      });
+    }, { threshold: 0 });
+
+    stickObserver.observe(sentinel);
+
+    window.addEventListener('resize', function () {
+      if (bar.classList.contains('is-stuck')) setStuck(true);
+    });
+  })();
+</script>
+</body>
+</html>

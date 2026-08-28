@@ -1,4 +1,4 @@
-[← Field-by-field mapping](06-field-mapping.md) · [Index](README.md)
+[← Field-by-field mapping](06-field-mapping.md) · [Index](README.md) · Next: [The event model →](08-event-model.md)
 
 # 7. The theme model
 

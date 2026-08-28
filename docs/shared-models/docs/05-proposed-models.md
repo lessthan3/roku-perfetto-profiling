@@ -4,7 +4,19 @@
 
 Five types in `src-sdk/core` that every client's Task emits and every card reads. One shape per entity, whatever the feed looks like.
 
-## Where normalization lives
+## Normalization
+
+Data arriving from a client crosses one boundary. The raw vocabulary stops there, and one shape lives downstream of it.
+
+```
+feed  ──>  Parse.*  ──>  Stats.*  ──>  cards
+           the only code that
+           READS a client's raw shape
+```
+
+Many spellings in, one shape out. Every client's own words are resolved once, at the boundary, and never again.
+
+### Where it lives
 
 Normalization lives in the **Task** — `FoxTask`, `ParamountTask`, and an ESPN equivalent. A Task has no XML interface of its own, so it can only construct and emit the shared `Stats.*` node.
 

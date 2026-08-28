@@ -103,14 +103,25 @@
         var target = figure.querySelector('[data-node="' + name.trim() + '"]');
         if (!target) return;
 
+        // a fan-out diagram groups by TARGET rather than by source, so the path
+        // also carries the client it arrives at — lets a legend dim by either end
+        var receiver = target.closest('[data-client]');
+
+        // `data-color-by="target"` recolours per destination instead of per source,
+        // which is what a fan-OUT needs: one source, one colour per arm
+        var pathColor = color;
+        if (source.dataset.colorBy === 'target' && receiver && receiver.dataset.color) {
+          pathColor = getComputedStyle(receiver).getPropertyValue(receiver.dataset.color).trim() || color;
+        }
+
         var b = anchor(target.getBoundingClientRect(), frame, toSide);
 
         var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', axis === 'y' ? vertical(a, b) : curve(a, b));
         path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', color);
+        path.setAttribute('stroke', pathColor);
         path.setAttribute('stroke-width', source.dataset.width || '1.3');
-        path.setAttribute('marker-end', 'url(#' + ensureMarker(defs, color) + ')');
+        path.setAttribute('marker-end', 'url(#' + ensureMarker(defs, pathColor) + ')');
         path.setAttribute('opacity', '0.9');
 
         // dashed = fallback chain, dotted = no source in this feed; both are
@@ -119,6 +130,7 @@
 
         // carry the client through so the existing dim-toggle CSS still applies
         if (owner) path.setAttribute('data-client', owner.dataset.client);
+        if (receiver) path.setAttribute('data-client-to', receiver.dataset.client);
 
         svg.appendChild(path);
       });

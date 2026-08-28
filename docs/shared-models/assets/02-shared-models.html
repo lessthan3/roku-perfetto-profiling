@@ -738,13 +738,24 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
+  /* the bar is full-bleed, but its contents line up with the text column —
+     which sits past the section rail, not centred in the viewport */
   .clientlegend {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    max-width: 1080px;
+    max-width: 1328px;
     margin: 0 auto;
     padding: 22px 32px;
+    padding-left: calc(32px + var(--rail-w) + var(--rail-gap));
+  }
+
+  /* rail hidden — the text column recentres, so the legend follows it */
+  @media (max-width: 1024px) {
+    .clientlegend {
+      max-width: 1080px;
+      padding-left: 32px;
+    }
   }
 
   .client-btn {
@@ -1026,6 +1037,7 @@
       <a href="../index.html">1. Context &amp; Problem</a>
       <a href="02-shared-models.html">2. Shared Models</a>
       <a href="03-theme-model.html">3. Theme Model</a>
+      <a href="04-event-model.html">4. Event Model</a>
   </div>
 </nav>
 
@@ -1044,10 +1056,26 @@
   </header>
 
   <section>
-    <h2 id="the-proposed-models">The proposed models</h2>
-    <p class="sec-note">Five types, one shape per entity</p>
+    <h2 id="normalization">Normalization</h2>
+    <p class="sec-note">Many spellings in, one shape out</p>
 
-    <h3>Where normalization lives</h3>
+    <div class="col">
+      <p>Data arriving from a client crosses one boundary. The raw vocabulary stops there, and one shape lives downstream of it.</p>
+    </div>
+
+    <div class="flag" style="border-left-color: var(--safe); background: var(--safe-soft);">
+      <span class="lbl" style="color: var(--safe);">Inbound</span>
+      <pre>feed  &rarr;  Parse.*  &rarr;  Stats.*  &rarr;  cards
+
+           the only code that
+           READS a client&rsquo;s raw shape</pre>
+    </div>
+
+    <div class="col">
+      <p>Many spellings in, one shape out. Every client&rsquo;s own words are resolved once, at the boundary, and never again.</p>
+    </div>
+
+    <h3>Where it lives</h3>
 
     <div class="col">
       <p>Normalization lives in the <b>Task</b> — <code>FoxTask</code>, <code>ParamountTask</code>, and an ESPN equivalent. A Task has no XML interface of its own, so it can only construct and emit the shared <code>Stats.*</code> node.</p>
@@ -1173,14 +1201,21 @@
       </figcaption>
     </figure>
 
+    <h3>Normalizers are not model methods</h3>
+
     <div class="col">
-      <h4 class="subhead">Normalizers are not model methods</h4>
       <p><code>Parse.status</code> sits in <code>Parse.*</code>, never on <code>Stats.Status</code>.</p>
       <ul class="plain">
         <li>Models hold no knowledge of raw client shape. Nothing accepting a raw int or client-specific string lives on one.</li>
         <li><code>Stats.Status</code> is a plain enum with query methods (<code>isLive</code>, <code>isUpcoming</code>, <code>isFinal</code>) over its own normalized value.</li>
       </ul>
     </div>
+
+  </section>
+
+  <section>
+    <h2 id="the-proposed-models">The proposed models</h2>
+    <p class="sec-note">Five types, one shape per entity</p>
 
     <div class="model">
       <div class="model-head">
@@ -1682,6 +1717,7 @@ Stats.Fmt.playerName(player)  ' "G. Minshew"</pre>
 <nav class="sectionnav" aria-label="Sections on this page">
   <p class="sectionnav-label">On this page</p>
   <ul>
+      <li><a href="#normalization">Normalization</a></li>
       <li><a href="#the-proposed-models">The proposed models</a></li>
       <li><a href="#field-by-field-mapping">Field-by-field mapping</a></li>
   </ul>
