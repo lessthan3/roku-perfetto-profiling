@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"$CLAUDE_PLUGIN_ROOT/rules/response.md\"",
+            "commandWindows": "cat \"$env:CLAUDE_PLUGIN_ROOT/rules/response.md\""
+          },
+          {
+            "type": "command",
+            "command": "cat \"$CLAUDE_PLUGIN_ROOT/rules/documents.md\"",
+            "commandWindows": "cat \"$env:CLAUDE_PLUGIN_ROOT/rules/documents.md\""
+          }
+        ]
+      }
+    ]
+  }
+}

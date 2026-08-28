@@ -1,0 +1,5 @@
+{
+  "name": "rules-git",
+  "version": "1.0.3",
+  "description": "Git commit and pull request conventions."
+}
