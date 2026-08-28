@@ -21,23 +21,14 @@
 
 The last row is the one that causes bugs — `away/home`, `team1/team2` and `left/right` are three different questions:
 
-```mermaid
-flowchart TD
-  SEM["<b>away / home</b><br/>semantic — which team hosts"]
-  ORD["<b>team1 / team2</b><br/>feed order — arbitrary"]
-  POS["<b>left / right</b><br/>screen position — presentational"]
-  DER["<b>homeAway + displayOrder</b><br/>derived, re-sorted per card"]
+| Spelling | Answers | Kind |
+| --- | --- | --- |
+| `away` / `home` | which team hosts | semantic |
+| `team1` / `team2` | what order the feed sent | arbitrary |
+| `left` / `right` | where it sits on screen | presentational |
+| `homeAway` + `displayOrder` | re-derived per card | derived |
 
-  SEM --> Q{"Code assumes<br/>one, reads another"}
-  ORD --> Q
-  POS --> Q
-  DER --> Q
-
-  Q --> BUG["Wrong side rendered.<br/>No error, no crash —<br/>just the away team's logo<br/>on the home team's row."]
-
-  style Q stroke:#B3402F,stroke-width:2px
-  style BUG fill:#FBEAE7,stroke:#B3402F,color:#B3402F
-```
+Code that assumes one and reads another renders the wrong side — no error, no crash, just the away team's logo on the home team's row.
 
 - Nothing in the type system distinguishes them, because there is no type.
 - Each card decides for itself.

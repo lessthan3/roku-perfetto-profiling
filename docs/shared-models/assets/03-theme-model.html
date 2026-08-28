@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Shared Stats Models &middot; Implementation</title>
+<title>The Theme Model</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Space+Mono:wght@400;700&display=swap">
@@ -791,13 +791,14 @@
   }
 </style>
 </head>
+
 <body>
 
 <nav class="pagenav">
   <div class="pagenav-inner">
       <a href="../index.html">1. Context &amp; Problem</a>
       <a href="02-shared-models.html">2. Shared Models</a>
-      <a href="03-implementation.html">3. Implementation</a>
+      <a href="03-theme-model.html">3. Theme Model</a>
   </div>
 </nav>
 
@@ -805,138 +806,172 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">maestro-sdk · data architecture proposal</p>
-    <h1>Shared Stats Models</h1>
-    <p class="standfirst">ESPN, Fox and Paramount each re-invent the same five entities — team, competitor, contest, stat row, status — in mutually incompatible shapes. The evidence below is drawn from the current source, and it already contains three implementations of one function that disagree on their output.</p>
+    <p class="eyebrow">maestro-sdk · theme model</p>
+    <h1>The Theme Model</h1>
+    <p class="standfirst">One <code>Theme</code> per brand, providing fonts and colors under a vocabulary every brand implements in full. <b>The names are fixed. The values are the brand&rsquo;s.</b> A component asks for <code>H3</code> or <code>C2</code> and gets whatever that means in the brand it was compiled into.</p>
     <div class="scope">
-      <span>src-sdk/espn</span>
-      <span>src-sdk/fox</span>
-      <span>src-sdk/paramount</span>
+      <span>fonts &middot; H1&ndash;H6 &times; weight</span>
+      <span>text &middot; C1&ndash;C6</span>
+      <span>surface &middot; S1&ndash;S6</span>
     </div>
   </header>
 
   <section>
-    <h2 id="where-this-lives-and-how-it-lands">Where this lives, and how it lands</h2>
-    <p class="sec-note">Sequenced so nothing is rewritten twice</p>
+    <h2 id="shape">Shape</h2>
+    <p class="sec-note">Four groups, one object</p>
 
-    <div class="col">
-      <p><code>src-sdk/core/</code> is the natural home and is effectively empty today — it holds only <code>brandingUtils.brs</code>, so there is no existing structure to fight.</p>
-      <p>Every phase below moves parsing out of a client-specific ContentNode (<code>Stats.Game</code>, <code>Stats.Event</code>, <code>Stats.Fight</code>) and into that client's Task (<code>ParamountTask</code>, <code>FoxTask</code>, an ESPN equivalent).</p>
-      <ul class="plain">
-        <li>The Task is the only thing each phase adds a raw-shape reader to.</li>
-        <li>It has no XML interface of its own.</li>
-        <li>Once a phase lands, the client-specific node it replaced is deleted — not kept around as a second, quieter model.</li>
-      </ul>
-      <h4 class="subhead">Ordering</h4>
-      <ul class="plain">
-        <li>Each phase ships independently.</li>
-        <li>ESPN (the risky client) goes last, after the models are proven twice.</li>
-      </ul>
+    <div class="flag" style="border-left-color: var(--safe); background: var(--safe-soft);">
+      <span class="lbl" style="color: var(--safe);">Theme</span>
+      <pre>fonts     H1&ndash;H6 &times; weight   &rarr;  face + size
+text      C1&ndash;C6             &rarr;  hex
+surface   S1&ndash;S6             &rarr;  hex
+semantic  live &middot; win &middot; alert &middot; accent</pre>
     </div>
 
-    <ol class="phases">
-      <li>
-        <div>
-          <h3>Land the shared layer with no callers</h3>
-          <ul class="plain">
-            <li>Add <code>Stats.Status</code>, <code>Stats.Fmt</code>, <code>Parse.status</code>, and the type definitions to <code>src-sdk/core</code>.</li>
-            <li><code>Parse.status</code> lives in <code>Parse.*</code>, not as a <code>Stats.Status.normalize</code> method — deliberate, so the model stays a plain enum that never touches raw client shape.</li>
-            <li><code>footballFormat.bs</code> is promoted verbatim. No behaviour change, easy to review.</li>
-          </ul>
-        </div>
-      </li>
-      <li>
-        <div>
-          <h3>Migrate Paramount NFL — the closest fit</h3>
-          <ul class="plain">
-            <li><code>Stats.Game</code> already produces these shapes. The work is moving that logic into <code>ParamountTask</code> so it emits <code>Stats.Contest</code>/<code>Stats.Competitor</code> directly.</li>
-            <li>Swap <code>GameStatus</code> for <code>Stats.Status</code>.</li>
-            <li>Delete the local <code>Fmt</code> and <code>Stats.Game</code>'s own interface once nothing reads it.</li>
-            <li>Proves the models against the most-evolved client, with the smallest diff.</li>
-          </ul>
-        </div>
-      </li>
-      <li>
-        <div>
-          <h3>Migrate Paramount MMA — proves cross-sport fit</h3>
-          <p>The real test: fighters are competitors without home/away.</p>
-          <ul class="plain">
-            <li>Move fight parsing into <code>ParamountTask</code>, alongside the NFL path.</li>
-            <li>Delete the duplicated <code>FightStatus</code> and both copies of <code>Parse.record</code>.</li>
-            <li>Resolve <code>"24-4-0"</code> vs <code>"4-5"</code> into one deliberate choice.</li>
-            <li>Retire the <code>Stats.Fight</code> node.</li>
-          </ul>
-        </div>
-      </li>
-      <li>
-        <div>
-          <h3>Migrate Fox — retires the magic numbers</h3>
-          <ul class="plain">
-            <li>Move <code>team1</code>/<code>team2</code> → semantic-sides resolution into <code>FoxTask</code>.</li>
-            <li>Replace every <code>&lt;&gt; 2</code> with <code>Stats.Status.isFuture</code>.</li>
-            <li>Retire <code>Stats.Event</code>'s own interface — <code>team1</code>/<code>team2</code>/raw-<code>status</code> stop being readable directly from a Fox card.</li>
-            <li>Fox's two team shapes collapse into one <code>Stats.Competitor</code>.</li>
-          </ul>
-        </div>
-      </li>
-      <li>
-        <div>
-          <h3>Migrate ESPN — largest surface, most benefit</h3>
-          <ul class="plain">
-            <li>Build the ESPN Task so cards stop walking the response. There is no ESPN node today, so this adds the Task-side parse boundary from scratch rather than relocating one.</li>
-            <li>Collapse the four <code>GetTeamByKey</code> copies into one competitor lookup.</li>
-            <li>Removes the six-level digs.</li>
-          </ul>
-          <p>Fix <code>BetsDataModel.brs:61</code> here or sooner — it's a real defect independent of this work.</p>
-        </div>
-      </li>
-    </ol>
+    <div class="col">
+      <p>Every brand implements every token. A brand that omits one fails the build rather than the render &mdash; the vocabulary is a fixed list, so a missing rung is checkable.</p>
+      <p>Two things stay out of the shared vocabulary: a brand&rsquo;s own concepts, which live in that brand&rsquo;s file and are reachable only from that brand&rsquo;s components; and raw hex, which no component names directly.</p>
+    </div>
   </section>
 
   <section>
-    <h2 id="decisions-worth-making-explicitly">Decisions worth making explicitly</h2>
-    <p class="sec-note">These change the shape of the models — worth settling before phase 1</p>
+    <h2 id="fonts">Fonts</h2>
+    <p class="sec-note">A rung and a weight &mdash; two axes, named separately</p>
 
-    <ul class="plain">
-      <li><strong>Record format.</strong> <code>"4-5"</code> (drop empty ties) or <code>"24-4-0"</code> (always three parts)?
-        <ul class="plain">
-          <li>Football and MMA currently disagree.</li>
-          <li>MMA draws are meaningful in a way NFL ties arguably aren't.</li>
-          <li>May warrant a per-sport flag rather than one global answer.</li>
-        </ul>
-      </li>
-      <li><strong>Sides.</strong> Should <code>Stats.Contest</code> expose <code>home</code>/<code>away</code> as well as an ordered <code>competitors</code> array, or only the array?
-        <ul class="plain">
-          <li>Fights have no home side.</li>
-          <li>Head-to-head cards read far better with named sides.</li>
-          <li>Proposal includes both. Cost: two representations of the same competitors that can drift if one is mutated without the other.</li>
-        </ul>
-      </li>
-      <li><strong>Node vs assocarray — settled toward nodes.</strong> These are drawn as plain maps, but the design leans ContentNode:
-        <ul class="plain">
-          <li><b>Passed by reference.</b> A node handed from a Task to a card is the same object on both sides. An assocarray gets copied at the SceneGraph field boundary regardless, so that cost is paid either way.</li>
-          <li><b>The XML interface is a contract, not a convention.</b> An assocarray key is trust-based — the exact gap that let <code>Stats.Event.xml</code> become an undeclared second model.</li>
-          <li><b>Native components already expect nodes.</b> Node arrays hand off directly to List/Grid components without a conversion step.</li>
-        </ul>
-        What's still open: only the field-boundary cost <code>Stats.Game</code> already caps
-        for plays (<code>FB_RECENT_PLAYS = 5</code>) — whether that cap generalizes to every
-        collection field, not whether the models are nodes at all.
-      </li>
-      <li>
-        <strong>CardModel's contract.</strong>
-        <ul class="plain">
-          <li>Its <code>data</code> field stays an untyped assocarray under this proposal.</li>
-          <li>Typing it per card is a larger change, out of scope here.</li>
-        </ul>
-      </li>
-    </ul>
+    <div class="col">
+      <p><code>H1</code> is the largest heading, <code>H6</code> the smallest. The rung is a position in the brand&rsquo;s ramp, not a size &mdash; so the same name resolves to a different number in each brand, which is the point.</p>
+      <p>Weight is the second axis. It is passed, not baked into the name, so one rung never needs a family of suffixed variants.</p>
+    </div>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>Request</b><span>rung + weight</span></div>
+<pre>Theme.font("H3")
+Theme.font("H3", Weight.Semibold)
+Theme.font("H5", Weight.Bold)</pre>
+        <div class="out ok">Resolves in every brand</div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>Resolution</b><span>same name, per-brand value</span></div>
+<pre>"H1"  ESPN       &rarr; BentonSans-Bold 48
+      Paramount  &rarr; ProximaNova-Bold 48
+      Fox        &rarr; VenuAero-Bold 48</pre>
+        <div class="out ok">The brand owns face and size</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <p>A brand declares which weights it ships. Asking for a weight a brand does not have resolves to its nearest available cut rather than failing at runtime.</p>
+    </div>
   </section>
 
+  <section>
+    <h2 id="colors">Colors</h2>
+    <p class="sec-note">Two ramps &mdash; ink and ground are different things</p>
 
-  <footer>
-    Evidence gathered from <code>packages/maestro-sdk/src-sdk</code> at commit
-    <code>e509eb11</code>. All file:line references verified against the working tree.
-  </footer>
+    <div class="col">
+      <p><code>C</code> is text, <code>S</code> is surface. Both run brightest to dimmest. They are separate ramps because a value that works as text rarely works as a background.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Rung</th>
+            <th>Text &middot; <code>C</code></th>
+            <th>Surface &middot; <code>S</code></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">1</td><td>primary &mdash; brightest</td><td>card base</td></tr>
+          <tr><td class="mono">2</td><td>secondary</td><td>card focused</td></tr>
+          <tr><td class="mono">3</td><td>tertiary</td><td>track</td></tr>
+          <tr><td class="mono">4</td><td>quaternary</td><td>rail</td></tr>
+          <tr><td class="mono">5</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td class="mono">6</td><td>dimmest</td><td>deepest</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>Request</b><span>rung</span></div>
+<pre>Theme.text("C1")
+Theme.surface("S2")</pre>
+        <div class="out ok">A role, not a hex</div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>Resolution</b><span>same name, per-brand value</span></div>
+<pre>"C1"  Paramount  &rarr; #FFFFFF
+      Fox        &rarr; #ffffffd9
+
+"C2"  Paramount  &rarr; #CDCDCD
+      Fox        &rarr; #ffffffb3</pre>
+        <div class="out ok">Both correct</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="semantic">Semantic</h2>
+    <p class="sec-note">Colors that mean something rather than sit on a ramp</p>
+
+    <div class="col">
+      <p>A rung answers &ldquo;how bright.&rdquo; A semantic token answers &ldquo;what is this.&rdquo; They cannot be ramp positions, because their meaning &mdash; not their brightness &mdash; is what a component is asking for.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Means</th>
+            <th class="mono">Fox</th>
+            <th class="mono">Paramount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>live</code></td><td>this is happening now</td><td class="mono">#d70935</td><td class="mono">#FF3B30</td></tr>
+          <tr><td><code>win</code></td><td>a positive outcome</td><td class="mono">&mdash;</td><td class="mono">#2E7D32</td></tr>
+          <tr><td><code>alert</code></td><td>needs attention</td><td class="mono">#ff9eb3</td><td class="mono">&mdash;</td></tr>
+          <tr><td><code>accent</code></td><td>the brand&rsquo;s own colour</td><td class="mono">&mdash;</td><td class="mono">&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p>Retinting one never moves another. Two tokens that share a value today stay separate tokens if they mean different things.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="use">Use</h2>
+    <p class="sec-note">Components name tokens; nothing else knows a value</p>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>Component</b><span>asks by name</span></div>
+<pre>label.typography = "H3"
+label.color      = "C2"
+card.background  = "S1"</pre>
+        <div class="out ok">Portable across brands</div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>Config</b><span>overrides by name</span></div>
+<pre>{
+  "typography": "P4",
+  "color": "C2",
+  "bgColor": "S1"
+}</pre>
+        <div class="out ok">Selects a rung, never a literal</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <p>The theme is built once and read by every component, so font caching is a property of the object rather than a flag at each call site.</p>
+      <p>Only the brand&rsquo;s theme file names a hex value or a font path. A component that cannot express what it wants in tokens is the signal to add a token &mdash; for every brand at once &mdash; not to reach past the theme.</p>
+    </div>
+  </section>
 
 
 </div>
@@ -944,8 +979,11 @@
 <nav class="sectionnav" aria-label="Sections on this page">
   <p class="sectionnav-label">On this page</p>
   <ul>
-      <li><a href="#where-this-lives-and-how-it-lands">Where this lives, and how it lands</a></li>
-      <li><a href="#decisions-worth-making-explicitly">Decisions worth making explicitly</a></li>
+      <li><a href="#shape">Shape</a></li>
+      <li><a href="#fonts">Fonts</a></li>
+      <li><a href="#colors">Colors</a></li>
+      <li><a href="#semantic">Semantic</a></li>
+      <li><a href="#use">Use</a></li>
   </ul>
 </nav>
 </div>

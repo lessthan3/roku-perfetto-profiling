@@ -2,78 +2,29 @@
 
 # 5. The proposed models
 
-Five types, derived from what all three clients already build.
+Five types in `src-sdk/core` that every client's Task emits and every card reads. One shape per entity, whatever the feed looks like.
 
-These are not new inventions. Each one is the intersection of shapes the clients already construct.
+## Where normalization lives
 
-- `Parse.Football.teamSide` is within a field or two of the target already.
-- That's the evidence the abstraction fits, rather than being imposed.
+Normalization lives in the **Task** — `FoxTask`, `ParamountTask`, and an ESPN equivalent. A Task has no XML interface of its own, so it can only construct and emit the shared `Stats.*` node.
 
-## Where normalization lives — and where it must not
+- A client-specific ContentNode is a second model. Cards that read it couple to *its* interface, not the shared one.
+- With no client-specific node to hold a client-only field, the only way to satisfy a client's need is to extend the shared model — which makes it more capable for every client at once.
 
-Today's parse functions already do the right transformation; they just do it from the wrong place.
+```brightscript
+' feed (raw vocabulary)        task (only code reading raw shape)   core
+' ────────────────────────     ──────────────────────────────────   ──────────────
+' ESPN      teams[k]["$key"]   ESPNTask      Parse.espn         ┐
+' Fox       team1 / team2      FoxTask       Parse.fox          ├─> Stats.Contest
+' Fox kp    left_team          FoxTask       Parse.fox.keyPlays ├─> Stats.Competitor
+' Para NFL  awayTeam/homeTeam  ParamountTask Parse.Football     ├─> Stats.Status
+' Para MMA  fighterDetails[]   ParamountTask Parse.fight        ├─> Stats.StatRow
+'                                                               └─> Stats.Fmt
+'                              shared by every Task:
+'                              Parse.status · Stats.Fmt
 
-- `Parse.Football.teamSide` runs from inside `Stats.Game.bs`.
-- `Parse.fighters` runs from inside `Stats.Fight.bs`.
-- `Stats.Event.bs`'s `beforeParseData` runs from inside a node whose own `.xml` interface declares `team1`/`team2` as raw assocarrays and `status` as a bare Fox integer (`Stats.Event.xml:11-15`).
-
-That interface is itself the problem, independent of where the parsing code physically runs. A client-specific ContentNode is a second model.
-
-- Every card that reads `m.top` on `Stats.Event` couples to *its* interface, not the shared one.
-- That interface can grow a new Fox-only field the moment a dev needs one, with no shared-model gatekeeping in the way.
-- Putting the parse call inside the node doesn't cause that on its own — but a client-specific node makes the deviation possible and easy, which is exactly the failure mode this proposal closes off.
-
-So the design puts normalization in the **Task** — `FoxTask`, `ParamountTask`, and an ESPN equivalent — which has no XML interface of its own to deviate through. A Task is not a ContentNode; it can only ever construct and emit the shared `Stats.*` node. There is no `Stats.Event` for a Fox-only field to hide in, so the only way to satisfy a client's need is to extend the shared model itself. Client-specific requirements stop being reasons to reinvent a client's own shape, and start being the input that makes `Stats.Competitor`, `Stats.Contest`, and the rest more capable for every client at once:
-
-```mermaid
-flowchart LR
-  subgraph FEEDS["Feed · raw vocabulary"]
-    direction TB
-    E["<b>ESPN</b><br/>teams[k]['$key'] · shortDisplayName<br/>gameState · homeAway + displayOrder<br/><i>no normalizer today</i>"]
-    FS["<b>Fox · stats</b><br/>team1 / team2 · image.flag ?? image.logo<br/>eventStatus 1|2|3 · eventInformation<br/><i>status compared as &lt;&gt; 2</i>"]
-    FK["<b>Fox · keyplays</b><br/>left_team / right_team · entity_id<br/>images.team_kit · left_team_score<br/><i>2nd team shape inside one client</i>"]
-    PN["<b>Paramount · NFL</b><br/>awayTeam / homeTeam · team.nickname<br/>PREGAME | LIVE | POSTGAME<br/><i>closest fit already</i>"]
-    PM["<b>Paramount · MMA</b><br/>fighterDetails[] · corner · record<br/>UPCOMING | LIVE | FINAL<br/><i>no home/away</i>"]
-  end
-
-  subgraph TASKS["Client Tasks — the only code that reads raw shape"]
-    direction TB
-    TE["ESPNTask<br/><i>calls Parse.espn · phase 5</i>"]
-    TF["FoxTask<br/><i>calls Parse.fox / Parse.fox.keyPlays · phase 4</i>"]
-    TP["ParamountTask<br/><i>calls Parse.Football / Parse.fight · phases 2–3</i>"]
-    SHARED{{"Parse.status<br/>Stats.Fmt<br/><i>shared by all Tasks · phase 1</i>"}}
-  end
-
-  subgraph CORE["src-sdk/core — shared models, the only node type any Task emits"]
-    direction TB
-    M1["Stats.Contest"]
-    M2["Stats.Competitor"]
-    M3["Stats.StatRow"]
-    M4["Stats.Status"]
-    M5["Stats.Fmt"]
-  end
-
-  UI["<b>UI cards</b><br/>statsGameInfoCard · fightCard<br/>CompetitorsMatchup · teamGoals<br/><i>no raw feed access · no client-specific node · no per-card guards</i>"]
-
-  E --> TE
-  FS --> TF
-  FK --> TF
-  PN --> TP
-  PM --> TP
-
-  TE -.-> SHARED
-  TF -.-> SHARED
-  TP -.-> SHARED
-
-  TE --> CORE
-  TF --> CORE
-  TP --> CORE
-
-  CORE -->|reads only these| UI
-
-  style SHARED fill:#0B6E99,stroke:#0B6E99,color:#fff
-  style TASKS fill:#E4F1F7,stroke:#0B6E99
-  style UI fill:#E6F4EC,stroke:#1F7A4D
+' cards read the shared models only — no raw feed access,
+' no client-specific node, no per-card guards
 ```
 
 - Every feed keeps its own vocabulary right up to the Task boundary.
@@ -116,8 +67,6 @@ One side of a contest — a team or an individual.
 }
 ```
 
-**Shape proven by** (logic to relocate into `ParamountTask`/`FoxTask`, not left in place): `Parse.Football.teamSide` (`Stats.Game.bs:102`) · `Parse.fighters` (`Stats.Fight.bs:59`) · `teamPoster.bs:39` · `StatsModel.brs:359`
-
 ## Stats.Contest
 
 A game, match, or fight — the container every panel is built around.
@@ -138,20 +87,17 @@ A game, match, or fight — the container every panel is built around.
 }
 ```
 
-**Shape proven by** (logic to relocate into the client's Task; `Stats.Event`'s own `.xml` interface — `team1`/`team2` as raw assocarrays, `status` as a bare Fox integer — is retired, not carried forward): `Stats.Game parsePregame` (`Stats.Game.bs:38`) · `Stats.Event beforeParseData` (`Stats.Event.bs:11`) · `Stats.Fight` (`Stats.Fight.bs:17`)
-
 ## Stats.Status
 
-Two levels: a `phase` cards branch on, and a `detail` that keeps what the feed said. A single flat enum cannot do both — today's normalizers prove it, folding 17 (NFL) and 13 (MMA) raw inputs down to three values and discarding the rest.
+Two levels: a `phase` cards branch on, and a `detail` that keeps what the feed said.
 
 ### Why two levels
 
-- **`phase` is what the UI actually asks.** Every consumer today asks a coarse question — `isPregame`/`isLive`/`isPostgame`, or a raw `= "LIVE"` compare. None branch on a specific sub-state.
-- **The three phases already exist, re-derived per client.** `footballCardManifest.phaseKey()` maps the NFL enum to `"pre"`/`"live"`/`"post"`; `paramountStats.bs:221-227` hand-rolls the same mapping from raw MMA strings; `statsCardConfig.bs` keys every card list on those three. This promotes that shared vocabulary into the model instead of restating it per client.
-- **`detail` stops the information loss.** `"HALFTIME"` currently becomes indistinguishable from `"IN_PROGRESS"`, and `"ENDED"` from `"FINAL"`. A scoreboard wanting to show "HALF" has nowhere to read it from.
-- **It gives the unmodelled states a home.** `DELAYED`, `POSTPONED`, `CANCELED`, `SUSPENDED` are accepted by no current normalizer and fall through to `unknown`.
-- **Which part you are in is not a status, but halftime is.** `period` and `regulationParts` describe *position*; `halftime` describes a *broadcast state* with its own programming. They are not interchangeable — NFL declares 4 quarters, so halftime is the break after part 2 of 4, and hockey's is after part 2 of 3. There is no arithmetic on part count that picks it out across sports, and the feeds already say `"HALFTIME"` outright. Deriving what the feed hands you is a lossy round-trip.
-- **`betweenParts` covers the rest.** Between rounds of a fight, between quarters, between innings — a stoppage with no show attached.
+- **`phase` is what the UI asks.** Consumers ask a coarse question — is it upcoming, live, or done. None branch on a specific sub-state.
+- **`detail` prevents information loss.** A flat enum folds `"HALFTIME"` into `"IN_PROGRESS"` and `"ENDED"` into `"FINAL"`, leaving a scoreboard nowhere to read "HALF" from.
+- **It gives the uncommon states a home.** `DELAYED`, `POSTPONED`, `CANCELED`, `SUSPENDED` need somewhere to land other than `unknown`.
+- **Position is not status.** `period` and `regulationParts` describe *where* you are; `halftime` is a *broadcast state* with its own programming. No arithmetic on part count picks halftime out across sports — NFL's is after part 2 of 4, hockey's after part 2 of 3 — and feeds say `"HALFTIME"` outright.
+- **`betweenParts` covers the rest.** Between rounds, quarters, or innings — a stoppage with no show attached.
 
 ```brightscript
 ' the coarse lifecycle — the only thing a card must handle
@@ -206,10 +152,6 @@ Parse.status(raw) as Stats.Status   ' accepts int (Fox 1/2/3) and every
 ```
 
 An unrecognised input yields `phase = unknown` while `raw` still holds the original — the value never renders, but it stays diagnosable.
-
-### Migration is additive
-
-`isLive` keeps its meaning, so NFL's 20 call sites move over unchanged. MMA's eight raw-string compares (`fight.status = "LIVE"`) become `Stats.Status.isLive(...)` — the enum it already had but never adopted, since `FightStatus.isFinal`/`isLive`/`isUpcoming` are dead code today.
 
 **Replaces:** `T.Fox.EventStatus` · `T.Paramount.GameStatus` · `T.Paramount.FightStatus` · every `<> 2` literal
 
@@ -290,8 +232,6 @@ One comparison row — the unit behind every H2H and leaders card.
   leader as string            ' "home" | "away" | "" — never recomputed in a card
 }
 ```
-
-**Shape proven by** (logic to relocate into the client's Task): `Parse.Football.gameRow` (`Stats.Game.bs:367`) · `previewRow` (`:296`) · Fox `teamGoals.bs:81` `{template, text, value, barPercentage}`
 
 ## Stats.Fmt
 

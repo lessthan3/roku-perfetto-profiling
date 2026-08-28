@@ -57,32 +57,24 @@ The clustering is not new vocabulary. It is the vocabulary the config layer alre
 
 ## How it normalizes
 
-```mermaid
-flowchart LR
-  subgraph SRC["Source vocabularies"]
-    FOX["<b>Fox</b> — integer<br/>2 · 1 · 3"]
-    PNFL["<b>Paramount NFL</b> — 17 raw inputs<br/>PREGAME | PRE | SCHEDULED | UPCOMING | FUTURE<br/>LIVE | IN | IN_PROGRESS | INPROGRESS | ACTIVE | HALFTIME<br/>POSTGAME | POST | FINAL | COMPLETE | COMPLETED | ENDED"]
-    PMMA["<b>Paramount MMA</b> — 13 raw inputs<br/>UPCOMING | SCHEDULED | PRE | PREGAME | FUTURE<br/>LIVE | IN_PROGRESS | INPROGRESS | ACTIVE<br/>FINAL | COMPLETE | COMPLETED | ENDED"]
-    ESPN["<b>ESPN</b> — never normalized<br/>gameState · status.type · betStatus"]
-  end
+```brightscript
+' one normalizer, every client vocabulary
+Parse.status(raw) as Stats.Status
 
-  NORM{{"Parse.status()<br/>accepts int + all strings<br/><i>returns phase + detail</i>"}}
+'   Fox            2 | 1 | 3                                    (integer)
+'   Paramount NFL  PREGAME PRE SCHEDULED UPCOMING FUTURE
+'                  LIVE IN IN_PROGRESS INPROGRESS ACTIVE HALFTIME
+'                  POSTGAME POST FINAL COMPLETE COMPLETED ENDED  (17 inputs)
+'   Paramount MMA  UPCOMING SCHEDULED PRE PREGAME FUTURE
+'                  LIVE IN_PROGRESS INPROGRESS ACTIVE
+'                  FINAL COMPLETE COMPLETED ENDED                (13 inputs)
+'   ESPN           gameState · status.type · betStatus     (never normalized)
 
-  FOX --> NORM
-  PNFL --> NORM
-  PMMA --> NORM
-  ESPN --> NORM
-
-  NORM --> FUT["<b>future</b><br/><i>scheduled · delayed · postponed</i>"]
-  NORM --> LIVE["<b>live</b><br/><i>inProgress · halftime<br/>betweenParts · suspended</i>"]
-  NORM --> PAST["<b>past</b><br/><i>final · canceled · abandoned</i>"]
-  NORM --> UNK["unknown<br/><i>unrecognised input never renders<br/>as a raw feed value</i>"]
-
-  style NORM fill:#0B6E99,stroke:#0B6E99,color:#fff
-  style ESPN stroke:#B3402F,stroke-width:2px
-  style FUT fill:#E4F1F7,stroke:#0B6E99
-  style LIVE fill:#E4F1F7,stroke:#0B6E99
-  style PAST fill:#E4F1F7,stroke:#0B6E99
+' returns phase + detail
+'   future   -> scheduled · delayed · postponed
+'   live     -> inProgress · halftime · betweenParts · suspended
+'   past     -> final · canceled · abandoned
+'   unknown  -> raw kept, never rendered
 ```
 
 - The normalizer must accept an integer as well as strings — that single requirement lets Fox stop comparing against `2`.

@@ -15,10 +15,9 @@ This proposal defines a shared internal model layer, plus the normalization boun
 | [2. Status divergence](02-status-divergence.md) | One lifecycle, three encodings, five magic-number comparisons |
 | [3. Entity vocabularies](03-entity-vocabularies.md) | The same team, spelled five different ways across clients |
 | [4. What raw passthrough costs](04-cost-of-raw-data.md) | Three failure modes currently in `main`, including one latent defect |
-| [5. The proposed models](05-proposed-models.md) | Five types, with the flow diagram of feeds into the normalization boundary |
+| [5. The proposed models](05-proposed-models.md) | Five types, and where the normalization boundary sits |
 | [6. Field-by-field mapping](06-field-mapping.md) | Every source path, per client, per model field |
-| [7. Rollout](07-rollout.md) | Five phases, sequenced so nothing is rewritten twice |
-| [8. Open decisions](08-open-decisions.md) | Four calls worth settling before phase 1 |
+| [7. The theme model](07-theme-model.md) | One `Theme` per brand — fonts, text and surface ramps, and semantic colors, under a vocabulary every brand implements |
 
 An HTML version of the same content, with interactive diagrams, is at [index.html](../index.html).
 
@@ -35,3 +34,5 @@ Five models, in `src-sdk/core`:
 - `Stats.Status` — the three-state lifecycle, one encoding
 - `Stats.StatRow` — one comparison row
 - `Stats.Fmt` — the existing formatter, promoted so all clients reach it
+
+[Chapter 7](07-theme-model.md) defines the theme model — the same naming discipline applied to fonts and colors.

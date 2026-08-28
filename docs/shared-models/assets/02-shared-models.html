@@ -1025,7 +1025,7 @@
   <div class="pagenav-inner">
       <a href="../index.html">1. Context &amp; Problem</a>
       <a href="02-shared-models.html">2. Shared Models</a>
-      <a href="03-implementation.html">3. Implementation</a>
+      <a href="03-theme-model.html">3. Theme Model</a>
   </div>
 </nav>
 
@@ -1033,9 +1033,9 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">maestro-sdk · data architecture proposal</p>
+    <p class="eyebrow">maestro-sdk · shared models</p>
     <h1>Shared Stats Models</h1>
-    <p class="standfirst">ESPN, Fox and Paramount each re-invent the same five entities — team, competitor, contest, stat row, status — in mutually incompatible shapes. The evidence below is drawn from the current source, and it already contains three implementations of one function that disagree on their output.</p>
+    <p class="standfirst">Five types in <code>src-sdk/core</code> — competitor, contest, status, stat row, formatter — that every client's Task emits and every card reads. <b>One shape per entity, whatever the feed looks like.</b></p>
     <div class="scope">
       <span>src-sdk/espn</span>
       <span>src-sdk/fox</span>
@@ -1045,41 +1045,15 @@
 
   <section>
     <h2 id="the-proposed-models">The proposed models</h2>
-    <p class="sec-note">Five types, derived from what all three clients already build</p>
+    <p class="sec-note">Five types, one shape per entity</p>
+
+    <h3>Where normalization lives</h3>
 
     <div class="col">
-      <p>These are not new inventions. Each one is the intersection of shapes the clients already construct.</p>
+      <p>Normalization lives in the <b>Task</b> — <code>FoxTask</code>, <code>ParamountTask</code>, and an ESPN equivalent. A Task has no XML interface of its own, so it can only construct and emit the shared <code>Stats.*</code> node.</p>
       <ul class="plain">
-        <li><code>Parse.Football.teamSide</code> is within a field or two of the target already.</li>
-        <li>That's the evidence the abstraction fits, rather than being imposed.</li>
-      </ul>
-    </div>
-
-    <h3>Where normalization lives — and where it must not</h3>
-
-    <div class="col">
-      <h4 class="subhead">The right transformation, wrong place</h4>
-      <p>Today's parse functions already do the right transformation; they just do it from the wrong place.</p>
-      <ul class="plain">
-        <li><code>Parse.Football.teamSide</code> runs from inside <code>Stats.Game.bs</code>.</li>
-        <li><code>Parse.fighters</code> runs from inside <code>Stats.Fight.bs</code>.</li>
-        <li><code>Stats.Event.bs</code>'s <code>beforeParseData</code> runs from inside a node whose own <code>.xml</code> interface declares <code>team1</code>/<code>team2</code> as raw assocarrays and <code>status</code> as a bare Fox integer (<code>Stats.Event.xml:11-15</code>).</li>
-      </ul>
-
-      <h4 class="subhead">Why the interface itself is the problem</h4>
-      <p>That's the problem, independent of where the parsing code physically runs. A client-specific ContentNode is a second model.</p>
-      <ul class="plain">
-        <li>Every card that reads <code>m.top</code> on <code>Stats.Event</code> couples to <em>its</em> interface, not the shared one.</li>
-        <li>That interface can grow a new Fox-only field the moment a dev needs one, with no shared-model gatekeeping in the way.</li>
-        <li>Putting the parse call inside the node doesn't cause that on its own — but a client-specific node makes the deviation possible and easy, which is exactly the failure mode this proposal closes off.</li>
-      </ul>
-
-      <h4 class="subhead">The fix: normalize in the Task</h4>
-      <p>The design puts normalization in the <b>Task</b> — <code>FoxTask</code>, <code>ParamountTask</code>, and an ESPN equivalent — which has no XML interface of its own to deviate through.</p>
-      <ul class="plain">
-        <li>A Task is not a ContentNode. It can only ever construct and emit the shared <code>Stats.*</code> node.</li>
-        <li>There is no <code>Stats.Event</code> for a Fox-only field to hide in, so the only way to satisfy a client's need is to extend the shared model itself.</li>
-        <li>Client-specific requirements stop being reasons to reinvent a client's own shape, and start being the input that makes <code>Stats.Competitor</code>, <code>Stats.Contest</code>, and the rest more capable for every client at once:</li>
+        <li>A client-specific ContentNode is a second model. Cards that read it couple to <em>its</em> interface, not the shared one.</li>
+        <li>With no client-specific node to hold a client-only field, the only way to satisfy a client's need is to extend the shared model — which makes it more capable for every client at once.</li>
       </ul>
     </div>
 
@@ -1200,12 +1174,11 @@
     </figure>
 
     <div class="col">
-      <h4 class="subhead">Why the normalizer isn't a model method</h4>
-      <p><code>Parse.status</code> sits in <code>Parse.*</code>, not on <code>Stats.Status</code> — same reason parsing moved out of <code>Stats.Event</code>.</p>
+      <h4 class="subhead">Normalizers are not model methods</h4>
+      <p><code>Parse.status</code> sits in <code>Parse.*</code>, never on <code>Stats.Status</code>.</p>
       <ul class="plain">
-        <li>A <code>.normalize()</code> method hanging off the model implies the model knows how to read raw client shape. That's the exact coupling this proposal removes.</li>
-        <li><code>Stats.Status</code> stays a plain enum with query methods (<code>isLive</code>, <code>isUpcoming</code>, <code>isFinal</code>) that operate on its own already-normalized value.</li>
-        <li>Nothing that accepts a raw int or client-specific string lives on the model.</li>
+        <li>Models hold no knowledge of raw client shape. Nothing accepting a raw int or client-specific string lives on one.</li>
+        <li><code>Stats.Status</code> is a plain enum with query methods (<code>isLive</code>, <code>isUpcoming</code>, <code>isFinal</code>) over its own normalized value.</li>
       </ul>
     </div>
 
@@ -1225,11 +1198,6 @@
   record        as Stats.Record
   rank          as integer    ' 0 = unranked
 }</pre>
-      <div class="sourced">
-        <b>Shape proven by</b> (logic to relocate into <code>ParamountTask</code>/<code>FoxTask</code>, not left in place):
-        Parse.Football.teamSide (Stats.Game.bs:102) ·
-        Parse.fighters (Stats.Fight.bs:59) · teamPoster.bs:39 · StatsModel.brs:359
-      </div>
     </div>
 
     <div class="model">
@@ -1250,13 +1218,6 @@
   title       as string
   note        as string         ' Fox eventNotes, ESPN disclaimers
 }</pre>
-      <div class="sourced">
-        <b>Shape proven by</b> (logic to relocate into the client's Task;
-        <code>Stats.Event</code>'s own <code>.xml</code> interface — <code>team1</code>/<code>team2</code>
-        as raw assocarrays, <code>status</code> as a bare Fox integer — is retired, not carried forward):
-        Stats.Game parsePregame (Stats.Game.bs:38) ·
-        Stats.Event beforeParseData (Stats.Event.bs:11) · Stats.Fight (Stats.Fight.bs:17)
-      </div>
     </div>
 
     <div class="model">
@@ -1327,12 +1288,9 @@ Parse.seasonType(raw) as Stats.SeasonType
 ' display stays a formatter, fed by the typed value not raw text
 Stats.Fmt.seasonName(seasonType)   ' regular -&gt; "Regular Season"</pre>
       <div class="sourced">
-        <b>Why it is its own type:</b> <code>"PRE"</code> and <code>"POST"</code> mean
-        <em>preseason</em>/<em>postseason</em> to <code>seasonTypeLabel</code>
-        (Stats.Game.bs:220) but <em>pregame</em>/<em>postgame</em> to
-        <code>GameStatus.normalize</code> (enums.bs:29). Both uppercase and compare bare
-        strings — only the choice of function tells them apart.
-        <b>Replaces:</b> Parse.Football.seasonTypeLabel's string matching
+        <b>Separate from <code>Stats.Status</code>:</b> <code>"PRE"</code>/<code>"POST"</code>
+        mean <em>preseason</em>/<em>postseason</em> here, but <em>pregame</em>/<em>postgame</em>
+        as a status. One type each, so the two can never be compared as bare strings.
       </div>
     </div>
 
@@ -1378,11 +1336,6 @@ Stats.Contest.isOvertime(contest)        ' period &gt; format.regulationParts</p
   away   as Stats.StatValue
   leader as string    ' "home" | "away" | "" — never recomputed in a card
 }</pre>
-      <div class="sourced">
-        <b>Shape proven by</b> (logic to relocate into the client's Task):
-        Parse.Football.gameRow (Stats.Game.bs:367) ·
-        previewRow (:296) · Fox teamGoals.bs:81 <code>{template,text,value,barPercentage}</code>
-      </div>
     </div>
 
     <div class="model">
@@ -1395,7 +1348,6 @@ Stats.Fmt.record(record)      ' one output format, chosen deliberately
 Stats.Fmt.playerName(player)  ' "G. Minshew"</pre>
       <div class="sourced">
         <b>Promoted from:</b> paramount/server/FootballService/models/footballFormat.bs
-        — currently reachable by one service of one client
       </div>
     </div>
   </section>
@@ -1405,11 +1357,7 @@ Stats.Fmt.playerName(player)  ' "G. Minshew"</pre>
     <p class="sec-note">Every source path, per client, per model field</p>
 
     <div class="col">
-      <ul class="plain">
-        <li>These are the actual expressions in the working tree, not paraphrases.</li>
-        <li>Where a client resolves a value through a fallback chain, the whole chain is drawn — that chain gets deleted once the client's Task owns it.</li>
-        <li>See "Where normalization lives — and where it must not" above for why that logic lives in the Task, not a client-specific ContentNode.</li>
-      </ul>
+      <p>Where a client resolves a value through a fallback chain, the whole chain is drawn. That chain moves into the client's Task.</p>
     </div>
 
     <div class="maplegend">
@@ -1727,7 +1675,7 @@ Stats.Fmt.playerName(player)  ' "G. Minshew"</pre>
   </section>
 
 
-<p class="pagefoot-next"><a href="03-implementation.html">Next: Implementation &rarr;</a></p>
+<p class="pagefoot-next"><a href="03-theme-model.html">Next: Theme Model &rarr;</a></p>
 
 </div>
 
