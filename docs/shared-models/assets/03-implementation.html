@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Stats Models &middot; Implementation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Space+Mono:wght@400;700&display=swap">
+
+<style>
+  :root {
+    --ground: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-2: #F2F2EE;
+    --ink: #1A1D21;
+    --ink-2: #4A5158;
+    --ink-3: #767E86;
+    --rule: #E0E0DA;
+    --rule-2: #CFCFC7;
+    --accent: #0B6E99;
+    --accent-soft: #E4F1F7;
+    --risk: #B3402F;
+    --risk-soft: #FBEAE7;
+    --safe: #1F7A4D;
+    --safe-soft: #E6F4EC;
+    --measure: 72ch;
+
+    /* height of the sticky page-nav — everything that sticks below it offsets
+       by this, rather than each guessing its own magic number */
+    --nav-h: 51px;
+
+    /* the left rail's width and its gutter — the diagram bleed subtracts these
+       so a figure never grows underneath "On this page" */
+    --rail-w: 216px;
+    --rail-gap: 40px;
+
+    --c-para-nfl: #6E4FA3;
+    --c-para-nfl-soft: #F1ECF8;
+    --c-para-mma: #B0468A;
+    --c-para-mma-soft: #FAECF5;
+    --c-fox-stats: #C77A1F;
+    --c-fox-stats-soft: #FCF1E3;
+    --c-fox-keyplays: #A3811F;
+    --c-fox-keyplays-soft: #FAF5E3;
+    --c-espn: #2C6FB0;
+    --c-espn-soft: #EAF2FA;
+
+    --f-display: "Source Serif 4", Georgia, serif;
+    --f-body: "IBM Plex Sans", system-ui, sans-serif;
+    --f-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101418;
+      --surface: #161B21;
+      --surface-2: #1D242B;
+      --ink: #E8EAED;
+      --ink-2: #AEB6BD;
+      --ink-3: #7D858C;
+      --rule: #262E36;
+      --rule-2: #36404A;
+      --accent: #5AC8FA;
+      --accent-soft: #12242E;
+      --risk: #FF6B5E;
+      --risk-soft: #2B1714;
+      --safe: #4ADE80;
+      --safe-soft: #12251A;
+
+      --c-para-nfl: #B79CE0;
+      --c-para-nfl-soft: #241C33;
+      --c-para-mma: #E091C4;
+      --c-para-mma-soft: #331C2B;
+      --c-fox-stats: #F0AE5C;
+      --c-fox-stats-soft: #332411;
+      --c-fox-keyplays: #DCC169;
+      --c-fox-keyplays-soft: #302B12;
+      --c-espn: #7FB4E8;
+      --c-espn-soft: #16283A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101418;
+    --surface: #161B21;
+    --surface-2: #1D242B;
+    --ink: #E8EAED;
+    --ink-2: #AEB6BD;
+    --ink-3: #7D858C;
+    --rule: #262E36;
+    --rule-2: #36404A;
+    --accent: #5AC8FA;
+    --accent-soft: #12242E;
+    --risk: #FF6B5E;
+    --risk-soft: #2B1714;
+    --safe: #4ADE80;
+    --safe-soft: #12251A;
+
+    --c-para-nfl: #B79CE0;
+    --c-para-nfl-soft: #241C33;
+    --c-para-mma: #E091C4;
+    --c-para-mma-soft: #331C2B;
+    --c-fox-stats: #F0AE5C;
+    --c-fox-stats-soft: #332411;
+    --c-fox-keyplays: #DCC169;
+    --c-fox-keyplays-soft: #302B12;
+    --c-espn: #7FB4E8;
+    --c-espn-soft: #16283A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+  }
+
+  .col { max-width: var(--measure); }
+
+  /* ---------- masthead ---------- */
+
+  header.mast {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(34px, 5.2vw, 54px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+  }
+
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 28px;
+  }
+
+  .scope span {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border: 1px solid var(--rule-2);
+    border-radius: 2px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- structure ---------- */
+
+  section { margin-bottom: 96px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+    scroll-margin-top: 76px;
+  }
+
+  .sec-note {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 24px;
+  }
+
+  h3 {
+    font-family: var(--f-body);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.005em;
+    margin: 52px 0 14px;
+  }
+
+  h4.subhead {
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 34px 0 10px;
+  }
+
+  p { margin: 0 0 18px; }
+  .col p { max-width: var(--measure); }
+
+  code {
+    font-family: var(--f-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible,
+  details:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- evidence table ---------- */
+
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 24px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 640px;
+  }
+
+  th {
+    text-align: left;
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    color: var(--ink-2);
+  }
+
+  tr:last-child td { border-bottom: 0; }
+  td strong { color: var(--ink); font-weight: 600; }
+
+  td.mono, th.mono { font-family: var(--f-mono); font-size: 12.5px; }
+
+  /* ---------- divergence specimens ---------- */
+
+  .split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 22px 0;
+  }
+
+  .spec {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .spec-head {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 9px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  .spec-head b { color: var(--ink); font-weight: 700; }
+
+  .spec pre {
+    margin: 0;
+    padding: 14px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .out {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    padding: 9px 14px;
+    border-top: 1px dashed var(--rule-2);
+    color: var(--ink-3);
+  }
+  .out b { font-weight: 700; }
+  .out.bad b { color: var(--risk); }
+  .out.ok b { color: var(--safe); }
+
+  /* ---------- callout ---------- */
+
+  .flag {
+    border-left: 3px solid var(--risk);
+    background: var(--risk-soft);
+    padding: 16px 20px;
+    margin: 24px 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .flag p { margin: 0; max-width: none; }
+
+  .flag .lbl {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--risk);
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 700;
+  }
+
+  .flag pre {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    margin: 10px 0 0;
+    overflow-x: auto;
+    color: var(--ink);
+  }
+
+  /* ---------- model block ---------- */
+
+  .model {
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 20px 0;
+    overflow: hidden;
+  }
+
+  .model-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--accent-soft);
+  }
+
+  .model-head h4 {
+    font-family: var(--f-mono);
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 3px;
+    color: var(--ink);
+  }
+
+  .model-head span {
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .model pre {
+    margin: 0;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  .sourced {
+    padding: 11px 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
+  .sourced b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 28px 0;
+    padding: 0;
+  }
+
+  figure .figframe {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 24px 20px;
+    overflow-x: auto;
+  }
+
+  figure svg {
+    display: block;
+    width: 100%;
+    min-width: 660px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figcaption {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    margin-top: 12px;
+    max-width: 68ch;
+  }
+
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+
+  .svg-face { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  .svg-mono { font-family: "Space Mono", ui-monospace, monospace; }
+
+  figure.map svg { min-width: 720px; }
+
+  .maplegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 0 0 18px;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface-2);
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  .maplegend i {
+    font-style: normal;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .maplegend .swatch {
+    width: 22px;
+    height: 0;
+    border-top: 2px solid var(--ink-3);
+    display: inline-block;
+  }
+  .maplegend .swatch.fallback { border-top-style: dashed; }
+  .maplegend .swatch.gap { border-top-color: var(--risk); border-top-style: dotted; }
+
+  .clientlegend-bar {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 10;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-bottom: 6px;
+    background: transparent;
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .clientlegend-bar.is-stuck {
+    background: var(--accent-soft);
+    border-bottom-color: var(--rule);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .clientlegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 22px 32px;
+  }
+
+  .client-btn {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 20px;
+    padding: 5px 12px 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .client-btn:hover { border-color: var(--dot); }
+  .client-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .client-btn .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex: none;
+    background: var(--dot);
+  }
+
+  .client-btn[aria-pressed="false"],
+  .client-btn.wave-off {
+    opacity: 0.45;
+    background: transparent;
+  }
+
+  .client-btn[aria-pressed="false"] .dot,
+  .client-btn.wave-off .dot {
+    background: transparent;
+    border: 1.5px solid var(--dot);
+  }
+
+  .maphint {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin: 0 0 18px;
+  }
+
+  figure.map svg [data-client] {
+    transition: opacity 0.15s ease;
+  }
+
+  figure.map svg g[data-client] {
+    cursor: pointer;
+    outline: none;
+  }
+
+  figure.map svg g[data-client]:hover rect[stroke] {
+    stroke-width: 2.4;
+  }
+
+  .wrap[data-client-para-nfl="off"] figure.map svg [data-client="para-nfl"],
+  .wrap[data-client-para-mma="off"] figure.map svg [data-client="para-mma"],
+  .wrap[data-client-fox-stats="off"] figure.map svg [data-client="fox-stats"],
+  .wrap[data-client-fox-keyplays="off"] figure.map svg [data-client="fox-keyplays"],
+  .wrap[data-client-espn="off"] figure.map svg [data-client="espn"] {
+    opacity: 0.12;
+  }
+
+  /* ---------- phases ---------- */
+
+  ol.phases {
+    counter-reset: p;
+    list-style: none;
+    padding: 0;
+    margin: 24px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* direct children only — a bare descendant selector also caught the <li>s
+     inside each phase's own ul.plain, turning every nested bullet into a
+     44px-column grid that wrapped <code> to a few characters per line */
+  ol.phases > li {
+    counter-increment: p;
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 18px;
+    padding: 26px 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+
+  ol.phases > li::before {
+    content: counter(p);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+
+  ol.phases > li > div h3 { margin: 0 0 4px; font-size: 18px; }
+  ol.phases p { margin: 0; color: var(--ink-2); font-size: 14.5px; max-width: 64ch; }
+
+  ul.plain { padding-left: 20px; margin: 0 0 20px; max-width: var(--measure); }
+  ul.plain li { margin-bottom: 9px; color: var(--ink-2); }
+  ul.plain li strong { color: var(--ink); font-weight: 600; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px 80px; }
+    header.mast { padding-top: 44px; }
+  }
+
+  /* ---------- page nav ---------- */
+
+  nav.pagenav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  nav.pagenav .pagenav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  nav.pagenav a {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 14px 14px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+
+  nav.pagenav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.pagenav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  nav.pagenav a.is-active {
+    color: var(--accent);
+    font-weight: 700;
+    border-bottom-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ---------- page layout with section rail ---------- */
+
+  .pagegrid {
+    max-width: 1328px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    gap: var(--rail-gap);
+    align-items: start;
+  }
+
+  .pagegrid .wrap {
+    padding: 0;
+    max-width: 1080px;
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .pagegrid nav.sectionnav {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* ---------- section nav (sidebar TOC) ---------- */
+
+  nav.sectionnav {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--legend-h, 0px) + 20px);
+    padding: 20px 20px 20px 0;
+    border-right: 1px solid var(--rule);
+    max-height: calc(100vh - var(--nav-h) - var(--legend-h, 0px) - 40px);
+    overflow-y: auto;
+    transition: top 0.15s ease;
+  }
+
+  nav.sectionnav .sectionnav-label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  nav.sectionnav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  nav.sectionnav a {
+    display: block;
+    font-family: var(--f-body);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 7px 10px;
+    border-radius: 3px;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  nav.sectionnav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.sectionnav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  nav.sectionnav a.is-active {
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+
+  /* ---------- closing / next-page nav ---------- */
+
+  .pagefoot-next {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    margin-top: 8px;
+  }
+
+  .pagefoot-next a {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .pagefoot-next a:hover { text-decoration: underline; }
+
+  @media (max-width: 1024px) {
+    .pagegrid {
+      display: block;
+      max-width: 1080px;
+    }
+
+    nav.sectionnav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="pagenav">
+  <div class="pagenav-inner">
+      <a href="../index.html">1. Context &amp; Problem</a>
+      <a href="02-shared-models.html">2. Shared Models</a>
+      <a href="03-implementation.html">3. Implementation</a>
+  </div>
+</nav>
+
+<div class="pagegrid">
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">maestro-sdk · data architecture proposal</p>
+    <h1>Shared Stats Models</h1>
+    <p class="standfirst">ESPN, Fox and Paramount each re-invent the same five entities — team, competitor, contest, stat row, status — in mutually incompatible shapes. The evidence below is drawn from the current source, and it already contains three implementations of one function that disagree on their output.</p>
+    <div class="scope">
+      <span>src-sdk/espn</span>
+      <span>src-sdk/fox</span>
+      <span>src-sdk/paramount</span>
+    </div>
+  </header>
+
+  <section>
+    <h2 id="where-this-lives-and-how-it-lands">Where this lives, and how it lands</h2>
+    <p class="sec-note">Sequenced so nothing is rewritten twice</p>
+
+    <div class="col">
+      <p><code>src-sdk/core/</code> is the natural home and is effectively empty today — it holds only <code>brandingUtils.brs</code>, so there is no existing structure to fight.</p>
+      <p>Every phase below moves parsing out of a client-specific ContentNode (<code>Stats.Game</code>, <code>Stats.Event</code>, <code>Stats.Fight</code>) and into that client's Task (<code>ParamountTask</code>, <code>FoxTask</code>, an ESPN equivalent).</p>
+      <ul class="plain">
+        <li>The Task is the only thing each phase adds a raw-shape reader to.</li>
+        <li>It has no XML interface of its own.</li>
+        <li>Once a phase lands, the client-specific node it replaced is deleted — not kept around as a second, quieter model.</li>
+      </ul>
+      <h4 class="subhead">Ordering</h4>
+      <ul class="plain">
+        <li>Each phase ships independently.</li>
+        <li>ESPN (the risky client) goes last, after the models are proven twice.</li>
+      </ul>
+    </div>
+
+    <ol class="phases">
+      <li>
+        <div>
+          <h3>Land the shared layer with no callers</h3>
+          <ul class="plain">
+            <li>Add <code>Stats.Status</code>, <code>Stats.Fmt</code>, <code>Parse.status</code>, and the type definitions to <code>src-sdk/core</code>.</li>
+            <li><code>Parse.status</code> lives in <code>Parse.*</code>, not as a <code>Stats.Status.normalize</code> method — deliberate, so the model stays a plain enum that never touches raw client shape.</li>
+            <li><code>footballFormat.bs</code> is promoted verbatim. No behaviour change, easy to review.</li>
+          </ul>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Migrate Paramount NFL — the closest fit</h3>
+          <ul class="plain">
+            <li><code>Stats.Game</code> already produces these shapes. The work is moving that logic into <code>ParamountTask</code> so it emits <code>Stats.Contest</code>/<code>Stats.Competitor</code> directly.</li>
+            <li>Swap <code>GameStatus</code> for <code>Stats.Status</code>.</li>
+            <li>Delete the local <code>Fmt</code> and <code>Stats.Game</code>'s own interface once nothing reads it.</li>
+            <li>Proves the models against the most-evolved client, with the smallest diff.</li>
+          </ul>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Migrate Paramount MMA — proves cross-sport fit</h3>
+          <p>The real test: fighters are competitors without home/away.</p>
+          <ul class="plain">
+            <li>Move fight parsing into <code>ParamountTask</code>, alongside the NFL path.</li>
+            <li>Delete the duplicated <code>FightStatus</code> and both copies of <code>Parse.record</code>.</li>
+            <li>Resolve <code>"24-4-0"</code> vs <code>"4-5"</code> into one deliberate choice.</li>
+            <li>Retire the <code>Stats.Fight</code> node.</li>
+          </ul>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Migrate Fox — retires the magic numbers</h3>
+          <ul class="plain">
+            <li>Move <code>team1</code>/<code>team2</code> → semantic-sides resolution into <code>FoxTask</code>.</li>
+            <li>Replace every <code>&lt;&gt; 2</code> with <code>Stats.Status.isFuture</code>.</li>
+            <li>Retire <code>Stats.Event</code>'s own interface — <code>team1</code>/<code>team2</code>/raw-<code>status</code> stop being readable directly from a Fox card.</li>
+            <li>Fox's two team shapes collapse into one <code>Stats.Competitor</code>.</li>
+          </ul>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Migrate ESPN — largest surface, most benefit</h3>
+          <ul class="plain">
+            <li>Build the ESPN Task so cards stop walking the response. There is no ESPN node today, so this adds the Task-side parse boundary from scratch rather than relocating one.</li>
+            <li>Collapse the four <code>GetTeamByKey</code> copies into one competitor lookup.</li>
+            <li>Removes the six-level digs.</li>
+          </ul>
+          <p>Fix <code>BetsDataModel.brs:61</code> here or sooner — it's a real defect independent of this work.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 id="decisions-worth-making-explicitly">Decisions worth making explicitly</h2>
+    <p class="sec-note">These change the shape of the models — worth settling before phase 1</p>
+
+    <ul class="plain">
+      <li><strong>Record format.</strong> <code>"4-5"</code> (drop empty ties) or <code>"24-4-0"</code> (always three parts)?
+        <ul class="plain">
+          <li>Football and MMA currently disagree.</li>
+          <li>MMA draws are meaningful in a way NFL ties arguably aren't.</li>
+          <li>May warrant a per-sport flag rather than one global answer.</li>
+        </ul>
+      </li>
+      <li><strong>Sides.</strong> Should <code>Stats.Contest</code> expose <code>home</code>/<code>away</code> as well as an ordered <code>competitors</code> array, or only the array?
+        <ul class="plain">
+          <li>Fights have no home side.</li>
+          <li>Head-to-head cards read far better with named sides.</li>
+          <li>Proposal includes both. Cost: two representations of the same competitors that can drift if one is mutated without the other.</li>
+        </ul>
+      </li>
+      <li><strong>Node vs assocarray — settled toward nodes.</strong> These are drawn as plain maps, but the design leans ContentNode:
+        <ul class="plain">
+          <li><b>Passed by reference.</b> A node handed from a Task to a card is the same object on both sides. An assocarray gets copied at the SceneGraph field boundary regardless, so that cost is paid either way.</li>
+          <li><b>The XML interface is a contract, not a convention.</b> An assocarray key is trust-based — the exact gap that let <code>Stats.Event.xml</code> become an undeclared second model.</li>
+          <li><b>Native components already expect nodes.</b> Node arrays hand off directly to List/Grid components without a conversion step.</li>
+        </ul>
+        What's still open: only the field-boundary cost <code>Stats.Game</code> already caps
+        for plays (<code>FB_RECENT_PLAYS = 5</code>) — whether that cap generalizes to every
+        collection field, not whether the models are nodes at all.
+      </li>
+      <li>
+        <strong>CardModel's contract.</strong>
+        <ul class="plain">
+          <li>Its <code>data</code> field stays an untyped assocarray under this proposal.</li>
+          <li>Typing it per card is a larger change, out of scope here.</li>
+        </ul>
+      </li>
+    </ul>
+  </section>
+
+
+  <footer>
+    Evidence gathered from <code>packages/maestro-sdk/src-sdk</code> at commit
+    <code>e509eb11</code>. All file:line references verified against the working tree.
+  </footer>
+
+
+</div>
+
+<nav class="sectionnav" aria-label="Sections on this page">
+  <p class="sectionnav-label">On this page</p>
+  <ul>
+      <li><a href="#where-this-lives-and-how-it-lands">Where this lives, and how it lands</a></li>
+      <li><a href="#decisions-worth-making-explicitly">Decisions worth making explicitly</a></li>
+  </ul>
+</nav>
+</div>
+
+<script src="shared.js"></script>
+</body>
+</html>

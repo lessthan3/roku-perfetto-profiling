@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Stats Models &middot; Context &amp; Problem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Space+Mono:wght@400;700&display=swap">
+
+<style>
+  :root {
+    --ground: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-2: #F2F2EE;
+    --ink: #1A1D21;
+    --ink-2: #4A5158;
+    --ink-3: #767E86;
+    --rule: #E0E0DA;
+    --rule-2: #CFCFC7;
+    --accent: #0B6E99;
+    --accent-soft: #E4F1F7;
+    --risk: #B3402F;
+    --risk-soft: #FBEAE7;
+    --safe: #1F7A4D;
+    --safe-soft: #E6F4EC;
+    --measure: 72ch;
+
+    /* height of the sticky page-nav — everything that sticks below it offsets
+       by this, rather than each guessing its own magic number */
+    --nav-h: 51px;
+
+    /* the left rail's width and its gutter — the diagram bleed subtracts these
+       so a figure never grows underneath "On this page" */
+    --rail-w: 216px;
+    --rail-gap: 40px;
+
+    --c-para-nfl: #6E4FA3;
+    --c-para-nfl-soft: #F1ECF8;
+    --c-para-mma: #B0468A;
+    --c-para-mma-soft: #FAECF5;
+    --c-fox-stats: #C77A1F;
+    --c-fox-stats-soft: #FCF1E3;
+    --c-fox-keyplays: #A3811F;
+    --c-fox-keyplays-soft: #FAF5E3;
+    --c-espn: #2C6FB0;
+    --c-espn-soft: #EAF2FA;
+
+    --f-display: "Source Serif 4", Georgia, serif;
+    --f-body: "IBM Plex Sans", system-ui, sans-serif;
+    --f-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101418;
+      --surface: #161B21;
+      --surface-2: #1D242B;
+      --ink: #E8EAED;
+      --ink-2: #AEB6BD;
+      --ink-3: #7D858C;
+      --rule: #262E36;
+      --rule-2: #36404A;
+      --accent: #5AC8FA;
+      --accent-soft: #12242E;
+      --risk: #FF6B5E;
+      --risk-soft: #2B1714;
+      --safe: #4ADE80;
+      --safe-soft: #12251A;
+
+      --c-para-nfl: #B79CE0;
+      --c-para-nfl-soft: #241C33;
+      --c-para-mma: #E091C4;
+      --c-para-mma-soft: #331C2B;
+      --c-fox-stats: #F0AE5C;
+      --c-fox-stats-soft: #332411;
+      --c-fox-keyplays: #DCC169;
+      --c-fox-keyplays-soft: #302B12;
+      --c-espn: #7FB4E8;
+      --c-espn-soft: #16283A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101418;
+    --surface: #161B21;
+    --surface-2: #1D242B;
+    --ink: #E8EAED;
+    --ink-2: #AEB6BD;
+    --ink-3: #7D858C;
+    --rule: #262E36;
+    --rule-2: #36404A;
+    --accent: #5AC8FA;
+    --accent-soft: #12242E;
+    --risk: #FF6B5E;
+    --risk-soft: #2B1714;
+    --safe: #4ADE80;
+    --safe-soft: #12251A;
+
+    --c-para-nfl: #B79CE0;
+    --c-para-nfl-soft: #241C33;
+    --c-para-mma: #E091C4;
+    --c-para-mma-soft: #331C2B;
+    --c-fox-stats: #F0AE5C;
+    --c-fox-stats-soft: #332411;
+    --c-fox-keyplays: #DCC169;
+    --c-fox-keyplays-soft: #302B12;
+    --c-espn: #7FB4E8;
+    --c-espn-soft: #16283A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+  }
+
+  .col { max-width: var(--measure); }
+
+  /* ---------- masthead ---------- */
+
+  header.mast {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(34px, 5.2vw, 54px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+  }
+
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 28px;
+  }
+
+  .scope span {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border: 1px solid var(--rule-2);
+    border-radius: 2px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- structure ---------- */
+
+  section { margin-bottom: 96px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+    scroll-margin-top: 76px;
+  }
+
+  .sec-note {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 24px;
+  }
+
+  h3 {
+    font-family: var(--f-body);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.005em;
+    margin: 52px 0 14px;
+  }
+
+  h4.subhead {
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 34px 0 10px;
+  }
+
+  p { margin: 0 0 18px; }
+  .col p { max-width: var(--measure); }
+
+  code {
+    font-family: var(--f-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible,
+  details:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- evidence table ---------- */
+
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 24px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 640px;
+  }
+
+  th {
+    text-align: left;
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    color: var(--ink-2);
+  }
+
+  tr:last-child td { border-bottom: 0; }
+  td strong { color: var(--ink); font-weight: 600; }
+
+  td.mono, th.mono { font-family: var(--f-mono); font-size: 12.5px; }
+
+  /* ---------- divergence specimens ---------- */
+
+  .split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 22px 0;
+  }
+
+  .spec {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .spec-head {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 9px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  .spec-head b { color: var(--ink); font-weight: 700; }
+
+  .spec pre {
+    margin: 0;
+    padding: 14px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .out {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    padding: 9px 14px;
+    border-top: 1px dashed var(--rule-2);
+    color: var(--ink-3);
+  }
+  .out b { font-weight: 700; }
+  .out.bad b { color: var(--risk); }
+  .out.ok b { color: var(--safe); }
+
+  /* ---------- callout ---------- */
+
+  .flag {
+    border-left: 3px solid var(--risk);
+    background: var(--risk-soft);
+    padding: 16px 20px;
+    margin: 24px 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .flag p { margin: 0; max-width: none; }
+
+  .flag .lbl {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--risk);
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 700;
+  }
+
+  .flag pre {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    margin: 10px 0 0;
+    overflow-x: auto;
+    color: var(--ink);
+  }
+
+  /* ---------- model block ---------- */
+
+  .model {
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 20px 0;
+    overflow: hidden;
+  }
+
+  .model-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--accent-soft);
+  }
+
+  .model-head h4 {
+    font-family: var(--f-mono);
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 3px;
+    color: var(--ink);
+  }
+
+  .model-head span {
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .model pre {
+    margin: 0;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  .sourced {
+    padding: 11px 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
+  .sourced b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 28px 0;
+    padding: 0;
+  }
+
+  figure .figframe {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 24px 20px;
+    overflow-x: auto;
+  }
+
+  figure svg {
+    display: block;
+    width: 100%;
+    min-width: 660px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figcaption {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    margin-top: 12px;
+    max-width: 68ch;
+  }
+
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+
+  .svg-face { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+  .svg-mono { font-family: "Space Mono", ui-monospace, monospace; }
+
+  figure.map svg { min-width: 720px; }
+
+  .maplegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 0 0 18px;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface-2);
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  .maplegend i {
+    font-style: normal;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .maplegend .swatch {
+    width: 22px;
+    height: 0;
+    border-top: 2px solid var(--ink-3);
+    display: inline-block;
+  }
+  .maplegend .swatch.fallback { border-top-style: dashed; }
+  .maplegend .swatch.gap { border-top-color: var(--risk); border-top-style: dotted; }
+
+  .clientlegend-bar {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 10;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-bottom: 6px;
+    background: transparent;
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .clientlegend-bar.is-stuck {
+    background: var(--accent-soft);
+    border-bottom-color: var(--rule);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .clientlegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 22px 32px;
+  }
+
+  .client-btn {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 20px;
+    padding: 5px 12px 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .client-btn:hover { border-color: var(--dot); }
+  .client-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .client-btn .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex: none;
+    background: var(--dot);
+  }
+
+  .client-btn[aria-pressed="false"],
+  .client-btn.wave-off {
+    opacity: 0.45;
+    background: transparent;
+  }
+
+  .client-btn[aria-pressed="false"] .dot,
+  .client-btn.wave-off .dot {
+    background: transparent;
+    border: 1.5px solid var(--dot);
+  }
+
+  .maphint {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin: 0 0 18px;
+  }
+
+  figure.map svg [data-client] {
+    transition: opacity 0.15s ease;
+  }
+
+  figure.map svg g[data-client] {
+    cursor: pointer;
+    outline: none;
+  }
+
+  figure.map svg g[data-client]:hover rect[stroke] {
+    stroke-width: 2.4;
+  }
+
+  .wrap[data-client-para-nfl="off"] figure.map svg [data-client="para-nfl"],
+  .wrap[data-client-para-mma="off"] figure.map svg [data-client="para-mma"],
+  .wrap[data-client-fox-stats="off"] figure.map svg [data-client="fox-stats"],
+  .wrap[data-client-fox-keyplays="off"] figure.map svg [data-client="fox-keyplays"],
+  .wrap[data-client-espn="off"] figure.map svg [data-client="espn"] {
+    opacity: 0.12;
+  }
+
+  /* ---------- phases ---------- */
+
+  ol.phases {
+    counter-reset: p;
+    list-style: none;
+    padding: 0;
+    margin: 24px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* direct children only — a bare descendant selector also caught the <li>s
+     inside each phase's own ul.plain, turning every nested bullet into a
+     44px-column grid that wrapped <code> to a few characters per line */
+  ol.phases > li {
+    counter-increment: p;
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 18px;
+    padding: 26px 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+
+  ol.phases > li::before {
+    content: counter(p);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+
+  ol.phases > li > div h3 { margin: 0 0 4px; font-size: 18px; }
+  ol.phases p { margin: 0; color: var(--ink-2); font-size: 14.5px; max-width: 64ch; }
+
+  ul.plain { padding-left: 20px; margin: 0 0 20px; max-width: var(--measure); }
+  ul.plain li { margin-bottom: 9px; color: var(--ink-2); }
+  ul.plain li strong { color: var(--ink); font-weight: 600; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px 80px; }
+    header.mast { padding-top: 44px; }
+  }
+
+  /* ---------- page nav ---------- */
+
+  nav.pagenav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  nav.pagenav .pagenav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  nav.pagenav a {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 14px 14px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+
+  nav.pagenav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.pagenav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  nav.pagenav a.is-active {
+    color: var(--accent);
+    font-weight: 700;
+    border-bottom-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ---------- page layout with section rail ---------- */
+
+  .pagegrid {
+    max-width: 1328px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    gap: var(--rail-gap);
+    align-items: start;
+  }
+
+  .pagegrid .wrap {
+    padding: 0;
+    max-width: 1080px;
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .pagegrid nav.sectionnav {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* ---------- section nav (sidebar TOC) ---------- */
+
+  nav.sectionnav {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--legend-h, 0px) + 20px);
+    padding: 20px 20px 20px 0;
+    border-right: 1px solid var(--rule);
+    max-height: calc(100vh - var(--nav-h) - var(--legend-h, 0px) - 40px);
+    overflow-y: auto;
+    transition: top 0.15s ease;
+  }
+
+  nav.sectionnav .sectionnav-label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  nav.sectionnav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  nav.sectionnav a {
+    display: block;
+    font-family: var(--f-body);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 7px 10px;
+    border-radius: 3px;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  nav.sectionnav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.sectionnav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  nav.sectionnav a.is-active {
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+
+  /* ---------- closing / next-page nav ---------- */
+
+  .pagefoot-next {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    margin-top: 8px;
+  }
+
+  .pagefoot-next a {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .pagefoot-next a:hover { text-decoration: underline; }
+
+  @media (max-width: 1024px) {
+    .pagegrid {
+      display: block;
+      max-width: 1080px;
+    }
+
+    nav.sectionnav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="pagenav">
+  <div class="pagenav-inner">
+      <a href="index.html">1. Context &amp; Problem</a>
+      <a href="assets/02-shared-models.html">2. Shared Models</a>
+      <a href="assets/03-implementation.html">3. Implementation</a>
+  </div>
+</nav>
+
+<div class="pagegrid">
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">maestro-sdk · data architecture proposal</p>
+    <h1>Shared Stats Models</h1>
+    <p class="standfirst">ESPN, Fox and Paramount each re-invent the same five entities — team, competitor, contest, stat row, status — in mutually incompatible shapes. The evidence below is drawn from the current source, and it already contains three implementations of one function that disagree on their output.</p>
+    <div class="scope">
+      <span>src-sdk/espn</span>
+      <span>src-sdk/fox</span>
+      <span>src-sdk/paramount</span>
+    </div>
+  </header>
+
+  <section>
+    <h2 id="what-the-code-already-says">What the code already says</h2>
+    <p class="sec-note">The argument was made in-repo before it was made here</p>
+
+    <div class="col">
+      <p>Paramount's football models carry a header comment that states the thesis of this document exactly. It was written to justify a helper that fixed the problem inside <em>one service of one client</em>:</p>
+    </div>
+
+    <div class="flag" style="border-left-color: var(--accent); background: var(--accent-soft);">
+      <span class="lbl" style="color: var(--accent);">footballFormat.bs:1–7</span>
+      <p>"Every model was growing its own <code>int</code>/<code>number</code>/<code>ordinal</code>/<code>record</code>/<code>playerName</code>, which is both duplication and a place for the four to quietly disagree — a rank rendering as <code>1st</code> in one card and <code>1th</code> in another is exactly the kind of drift this prevents."</p>
+    </div>
+
+    <div class="col">
+      <h4 class="subhead">Three record() functions, two outputs</h4>
+      <p>The fix worked, but stopped at the service boundary. Two directories away, the drift it warned about is live: three <code>record()</code> functions, same input shape, two different outputs.</p>
+    </div>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>Fmt.record</b><span>footballFormat.bs:54</span></div>
+<pre>text = wins + "-" + losses
+
+ties = record?.ties
+if is.number(ties) and cint(ties) &gt; 0
+  text += "-" + cint(ties).toStr()
+end if</pre>
+        <div class="out ok">4 wins, 5 losses, 0 ties → <b>"4-5"</b></div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>Parse.record</b><span>Stats.Fight.bs:79</span></div>
+<pre>wins   = record?.wins ?? 0
+losses = record?.losses ?? 0
+draws  = record?.draws ?? 0
+
+return wins.toStr() + "-" +
+  losses.toStr() + "-" + draws.toStr()</pre>
+        <div class="out bad">24 wins, 4 losses, 0 draws → <b>"24-4-0"</b></div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>Parse.record</b><span>Stats.FightDetails.bs:149</span></div>
+<pre>wins   = record?.wins ?? 0
+losses = record?.losses ?? 0
+draws  = record?.draws ?? 0
+
+return wins.toStr() + "-" +
+  losses.toStr() + "-" + draws.toStr()</pre>
+        <div class="out bad">byte-identical copy of the above → <b>"24-4-0"</b></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h4 class="subhead">The same drift in name formatting</h4>
+      <p><code>Fmt.playerName</code> exists and formats <code>"G. Minshew"</code>. Three Paramount cards ignore it and re-derive the same initial inline from <code>firstName</code>/<code>lastName</code>:</p>
+      <ul class="plain">
+        <li><code>judgesScoresCard.bs:203</code></li>
+        <li><code>taleOfTheTapeCard.bs:231</code></li>
+        <li><code>fightCard.bs:412</code></li>
+      </ul>
+      <p>A helper that exists but isn't reachable from where the work happens gets reimplemented. That's a structural problem, not a discipline problem.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="one-lifecycle-three-encodings">One lifecycle, three encodings</h2>
+    <p class="sec-note">Status is the clearest case for a shared type</p>
+
+    <div class="col">
+      <ul class="plain">
+        <li>Every client models the same three-state contest lifecycle.</li>
+        <li>No two agree on the representation, and one uses integers.</li>
+        <li>No value can cross a client boundary without translation.</li>
+      </ul>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Type</th>
+            <th class="mono">Before</th>
+            <th class="mono">During</th>
+            <th class="mono">After</th>
+            <th>Defined in</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Fox</strong></td>
+            <td>integer</td>
+            <td class="mono">FUTURE_EVENT = 2</td>
+            <td class="mono">LIVE_EVENT = 1</td>
+            <td class="mono">PAST_EVENT = 3</td>
+            <td class="mono">T.Fox.EventStatus</td>
+          </tr>
+          <tr>
+            <td><strong>Paramount NFL</strong></td>
+            <td>string</td>
+            <td class="mono">"PREGAME"</td>
+            <td class="mono">"LIVE"</td>
+            <td class="mono">"POSTGAME"</td>
+            <td class="mono">T.Paramount.GameStatus</td>
+          </tr>
+          <tr>
+            <td><strong>Paramount MMA</strong></td>
+            <td>string</td>
+            <td class="mono">"UPCOMING"</td>
+            <td class="mono">"LIVE"</td>
+            <td class="mono">"FINAL"</td>
+            <td class="mono">T.Paramount.FightStatus</td>
+          </tr>
+          <tr>
+            <td><strong>ESPN</strong></td>
+            <td>unnormalized</td>
+            <td class="mono" colspan="3">raw <code>gameState</code> / <code>status.type</code> / <code>betStatus</code> read straight from the response</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p>The two Paramount enums are near-duplicates of each other; the NFL file's own header admits it — <em>"Mirrors src-sdk/paramount/server/StatsService/enums/enums.bs (FightStatus)"</em>.</p>
+      <p>Both ship a hand-rolled <code>normalize()</code>, each accepting an overlapping-but-unequal set of raw strings.</p>
+      <h4 class="subhead">Fox's enum is unreachable from the UI</h4>
+      <p>It lives in a server namespace no component imports. The UI compares against the literal instead:</p>
+    </div>
+
+    <div class="flag">
+      <span class="lbl">Magic numbers standing in for the enum</span>
+      <pre>Stats.Event.bs:85      if (m.top.status &lt;&gt; 2)
+Stats.Event.bs:123     if (m.top.status &lt;&gt; 2)
+statsSummaryCard.bs:77 is.true(eventInformation?.eventStatus &lt;&gt; 2)
+scoreChip.bs:57        isCountdown = is.true(eventStatus = 2)
+statsMomentumCard.bs:93 eventStatus: cardData?.eventStatus ?? 1   ' defaults to LIVE</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="the-same-entity-five-vocabularies">The same entity, five vocabularies</h2>
+    <p class="sec-note">Field-name divergence across clients</p>
+
+    <div class="col">
+      <ul class="plain">
+        <li>A team is the most-read entity in all three clients.</li>
+        <li>No two definitions match — not even within a single client.</li>
+        <li>Fox alone carries two incompatible team shapes, depending on which service produced it.</li>
+      </ul>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Concept</th>
+            <th class="mono">Paramount NFL</th>
+            <th class="mono">Fox stats</th>
+            <th class="mono">Fox keyplays</th>
+            <th class="mono">ESPN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>identity</strong></td>
+            <td class="mono">team.id</td>
+            <td class="mono">team1 / team2</td>
+            <td class="mono">entity_id</td>
+            <td class="mono">teams[k]["$key"]</td>
+          </tr>
+          <tr>
+            <td><strong>short name</strong></td>
+            <td class="mono">abbrev → shortName</td>
+            <td class="mono">abbreviation</td>
+            <td class="mono">abbreviation</td>
+            <td class="mono">shortDisplayName</td>
+          </tr>
+          <tr>
+            <td><strong>display name</strong></td>
+            <td class="mono">nickname</td>
+            <td class="mono">name</td>
+            <td class="mono">name</td>
+            <td class="mono">shortDisplayName</td>
+          </tr>
+          <tr>
+            <td><strong>logo</strong></td>
+            <td class="mono">image.url</td>
+            <td class="mono">image.flag ?? image.logo</td>
+            <td class="mono">images.team_kit</td>
+            <td class="mono">logo / logoDark</td>
+          </tr>
+          <tr>
+            <td><strong>brand colour</strong></td>
+            <td class="mono">colorPrimaryHex</td>
+            <td class="mono">color</td>
+            <td class="mono">—</td>
+            <td class="mono">—</td>
+          </tr>
+          <tr>
+            <td><strong>score</strong></td>
+            <td class="mono">scoreboard.away.total</td>
+            <td class="mono">team1.score</td>
+            <td class="mono">left_team_score</td>
+            <td class="mono">points / score</td>
+          </tr>
+          <tr>
+            <td><strong>record</strong></td>
+            <td class="mono">currentStandings</td>
+            <td class="mono">—</td>
+            <td class="mono">—</td>
+            <td class="mono">record</td>
+          </tr>
+          <tr>
+            <td><strong>sides keyed by</strong></td>
+            <td class="mono">away / home</td>
+            <td class="mono">team1 / team2</td>
+            <td class="mono">left / right</td>
+            <td class="mono">homeAway + displayOrder</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p>The last row is the expensive one — <code>away/home</code>, <code>team1/team2</code> and <code>left/right</code> are three different questions: semantic, feed-ordered, positional. Code that assumes one while reading another silently renders the wrong side.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="what-passing-raw-data-costs-today">What passing raw data costs today</h2>
+    <p class="sec-note">Three failure modes, all currently in main</p>
+
+    <h3>Unguarded traversal into response shape</h3>
+    <div class="col">
+      <ul class="plain">
+        <li>No model boundary means leaf UI walks the API's own tree.</li>
+        <li>ESPN's doubles branch dereferences six levels with no guard at any step.</li>
+        <li>An athlete without a country crashes the card.</li>
+      </ul>
+    </div>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>CompetitorsMatchup.brs</b><span>:26–31</span></div>
+<pre>athlete1 = athletes[
+  displayOrderedCompetitors[i].athletes[0]["$key"]
+]
+flags = [athlete1.country.flag.href, …]</pre>
+        <div class="out bad">no guard on <b>athletes[…]</b>, <b>.country</b>, or <b>.flag</b></div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>statsGameInfoCard.bs</b><span>:39–46</span></div>
+<pre>sub onCardData(cardData)
+  updateEventTitle(cardData?.eventInformation)
+  updateEventSubtitle(cardData?.eventInformation)
+  updateScoreboard(cardData?.eventInformation)
+end sub</pre>
+        <div class="out bad">the raw feed blob reaches a <b>leaf card</b></div>
+      </div>
+    </div>
+
+    <h3>The same helper, forked into safe and unsafe copies</h3>
+    <div class="col">
+      <ul class="plain">
+        <li><code>GetTeamByKey</code> exists four times in one ESPN directory.</li>
+        <li>Three take <code>teams as object</code> and call <code>.DoesExist()</code> on it directly.</li>
+        <li>The fourth takes <code>dynamic</code> and guards.</li>
+        <li>Whether a missing team crashes depends on which card the user is looking at.</li>
+      </ul>
+    </div>
+
+    <div class="split">
+      <div class="spec">
+        <div class="spec-head"><b>MatchPredictor.brs</b><span>:101 — also OnTheCourt, RecentGames</span></div>
+<pre>function GetTeamByKey(key as string,
+                      teams as object) as object
+  if teams.DoesExist(key)
+    return teams[key]
+  else
+    return invalid
+  end if
+end function</pre>
+        <div class="out bad">crashes when <b>teams</b> is invalid</div>
+      </div>
+      <div class="spec">
+        <div class="spec-head"><b>PlayerCard.brs</b><span>:240</span></div>
+<pre>function GetTeamByKey(key as dynamic,
+                      teams as dynamic) as object
+  if key = invalid or teams = invalid
+    return invalid
+  end if
+  if teams.DoesExist(key)
+    return teams[key]
+  end if
+  return invalid
+end function</pre>
+        <div class="out ok">guarded — the only copy that is</div>
+      </div>
+    </div>
+
+    <h3>A guard that cannot fire</h3>
+    <div class="col">
+      <p>This line reads as a null-check but never rejects anything:</p>
+    </div>
+
+    <div class="flag">
+      <span class="lbl">BetsDataModel.brs:61 · latent</span>
+      <pre>if athletes = invalid or (event?.competitions = invalid and event?.competitions.Count() = 0) then return invalid</pre>
+      <ul class="plain" style="margin-top:12px; font-size:14px;">
+        <li><code>and</code> should be <code>or</code>. As written, the competitions guard is dead code and <code>parseMatchTable</code> always returns a table.</li>
+        <li>It hasn't crashed only because of short-circuit evaluation — when the left side is true, the right side (which dereferences a value just proven possibly-invalid) never runs.</li>
+      </ul>
+    </div>
+  </section>
+
+
+<p class="pagefoot-next"><a href="assets/02-shared-models.html">Next: Shared Models &rarr;</a></p>
+
+</div>
+
+<nav class="sectionnav" aria-label="Sections on this page">
+  <p class="sectionnav-label">On this page</p>
+  <ul>
+      <li><a href="#what-the-code-already-says">What the code already says</a></li>
+      <li><a href="#one-lifecycle-three-encodings">One lifecycle, three encodings</a></li>
+      <li><a href="#the-same-entity-five-vocabularies">The same entity, five vocabularies</a></li>
+      <li><a href="#what-passing-raw-data-costs-today">What passing raw data costs today</a></li>
+  </ul>
+</nav>
+</div>
+
+<script src="assets/shared.js"></script>
+</body>
+</html>

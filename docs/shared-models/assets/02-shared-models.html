@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Stats Models &middot; Shared Models</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Space+Mono:wght@400;700&display=swap">
+
+<style>
+  :root {
+    --ground: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-2: #F2F2EE;
+    --ink: #1A1D21;
+    --ink-2: #4A5158;
+    --ink-3: #767E86;
+    --rule: #E0E0DA;
+    --rule-2: #CFCFC7;
+    --accent: #0B6E99;
+    --accent-soft: #E4F1F7;
+    --risk: #B3402F;
+    --risk-soft: #FBEAE7;
+    --safe: #1F7A4D;
+    --safe-soft: #E6F4EC;
+    --measure: 72ch;
+
+    /* height of the sticky page-nav — everything that sticks below it offsets
+       by this, rather than each guessing its own magic number */
+    --nav-h: 51px;
+
+    /* the left rail's width and its gutter — the diagram bleed subtracts these
+       so a figure never grows underneath "On this page" */
+    --rail-w: 216px;
+    --rail-gap: 40px;
+
+    --c-para-nfl: #6E4FA3;
+    --c-para-nfl-soft: #F1ECF8;
+    --c-para-mma: #B0468A;
+    --c-para-mma-soft: #FAECF5;
+    --c-fox-stats: #C77A1F;
+    --c-fox-stats-soft: #FCF1E3;
+    --c-fox-keyplays: #A3811F;
+    --c-fox-keyplays-soft: #FAF5E3;
+    --c-espn: #2C6FB0;
+    --c-espn-soft: #EAF2FA;
+
+    --f-display: "Source Serif 4", Georgia, serif;
+    --f-body: "IBM Plex Sans", system-ui, sans-serif;
+    --f-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101418;
+      --surface: #161B21;
+      --surface-2: #1D242B;
+      --ink: #E8EAED;
+      --ink-2: #AEB6BD;
+      --ink-3: #7D858C;
+      --rule: #262E36;
+      --rule-2: #36404A;
+      --accent: #5AC8FA;
+      --accent-soft: #12242E;
+      --risk: #FF6B5E;
+      --risk-soft: #2B1714;
+      --safe: #4ADE80;
+      --safe-soft: #12251A;
+
+      --c-para-nfl: #B79CE0;
+      --c-para-nfl-soft: #241C33;
+      --c-para-mma: #E091C4;
+      --c-para-mma-soft: #331C2B;
+      --c-fox-stats: #F0AE5C;
+      --c-fox-stats-soft: #332411;
+      --c-fox-keyplays: #DCC169;
+      --c-fox-keyplays-soft: #302B12;
+      --c-espn: #7FB4E8;
+      --c-espn-soft: #16283A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101418;
+    --surface: #161B21;
+    --surface-2: #1D242B;
+    --ink: #E8EAED;
+    --ink-2: #AEB6BD;
+    --ink-3: #7D858C;
+    --rule: #262E36;
+    --rule-2: #36404A;
+    --accent: #5AC8FA;
+    --accent-soft: #12242E;
+    --risk: #FF6B5E;
+    --risk-soft: #2B1714;
+    --safe: #4ADE80;
+    --safe-soft: #12251A;
+
+    --c-para-nfl: #B79CE0;
+    --c-para-nfl-soft: #241C33;
+    --c-para-mma: #E091C4;
+    --c-para-mma-soft: #331C2B;
+    --c-fox-stats: #F0AE5C;
+    --c-fox-stats-soft: #332411;
+    --c-fox-keyplays: #DCC169;
+    --c-fox-keyplays-soft: #302B12;
+    --c-espn: #7FB4E8;
+    --c-espn-soft: #16283A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+  }
+
+  .col { max-width: var(--measure); }
+
+  /* ---------- masthead ---------- */
+
+  header.mast {
+    padding: 72px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 20px;
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(34px, 5.2vw, 54px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+  }
+
+  .standfirst {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 28px;
+  }
+
+  .scope span {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border: 1px solid var(--rule-2);
+    border-radius: 2px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- structure ---------- */
+
+  section { margin-bottom: 96px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+    scroll-margin-top: 76px;
+  }
+
+  .sec-note {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 24px;
+  }
+
+  h3 {
+    font-family: var(--f-body);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.005em;
+    margin: 52px 0 14px;
+  }
+
+  h4.subhead {
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 34px 0 10px;
+  }
+
+  p { margin: 0 0 18px; }
+  .col p { max-width: var(--measure); }
+
+  code {
+    font-family: var(--f-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible,
+  details:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- evidence table ---------- */
+
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 24px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 640px;
+  }
+
+  th {
+    text-align: left;
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    color: var(--ink-2);
+  }
+
+  tr:last-child td { border-bottom: 0; }
+  td strong { color: var(--ink); font-weight: 600; }
+
+  td.mono, th.mono { font-family: var(--f-mono); font-size: 12.5px; }
+
+  /* ---------- divergence specimens ---------- */
+
+  .split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 22px 0;
+  }
+
+  .spec {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .spec-head {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 9px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink-2);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  .spec-head b { color: var(--ink); font-weight: 700; }
+
+  .spec pre {
+    margin: 0;
+    padding: 14px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .out {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    padding: 9px 14px;
+    border-top: 1px dashed var(--rule-2);
+    color: var(--ink-3);
+  }
+  .out b { font-weight: 700; }
+  .out.bad b { color: var(--risk); }
+  .out.ok b { color: var(--safe); }
+
+  /* ---------- callout ---------- */
+
+  .flag {
+    border-left: 3px solid var(--risk);
+    background: var(--risk-soft);
+    padding: 16px 20px;
+    margin: 24px 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .flag p { margin: 0; max-width: none; }
+
+  .flag .lbl {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--risk);
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 700;
+  }
+
+  .flag pre {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    margin: 10px 0 0;
+    overflow-x: auto;
+    color: var(--ink);
+  }
+
+  /* ---------- model block ---------- */
+
+  .model {
+    border: 1px solid var(--rule-2);
+    border-radius: 3px;
+    background: var(--surface);
+    margin: 20px 0;
+    overflow: hidden;
+  }
+
+  .model-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--accent-soft);
+  }
+
+  .model-head h4 {
+    font-family: var(--f-mono);
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 3px;
+    color: var(--ink);
+  }
+
+  .model-head span {
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .model pre {
+    margin: 0;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  .sourced {
+    padding: 11px 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
+  .sourced b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 28px 0;
+    padding: 0;
+  }
+
+  figure .figframe {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 24px 20px;
+    overflow-x: auto;
+  }
+
+  /* scoped off the arrow overlay, which is absolutely positioned and sized in JS */
+  figure svg:not(.dgm-arrows) {
+    display: block;
+    width: 100%;
+    min-width: 660px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figure .dgm { color: var(--ink); }
+
+  figcaption {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    margin-top: 12px;
+    max-width: 68ch;
+  }
+
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+
+  figure.map svg:not(.dgm-arrows) { min-width: 720px; }
+
+  /* ---------- div-based diagrams ---------- */
+
+  /* the stage is the arrow overlay's coordinate space — the SVG is stretched to
+     these bounds, so it must be the positioned ancestor */
+  .dgm {
+    position: relative;
+    display: grid;
+    gap: 18px 64px;
+    align-items: start;
+    min-width: 0;
+  }
+
+  /* arrows sit behind the cards so a curve never crosses over text */
+  svg.dgm-arrows {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 0;
+    min-width: 0;
+  }
+
+  .dgm > * { position: relative; z-index: 1; }
+
+  .dgm-card {
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+    padding: 12px 14px;
+    background: var(--surface);
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ink);
+    min-width: 0;
+  }
+
+  /* text wraps instead of overflowing — the whole point of moving off SVG */
+  .dgm-card p,
+  .dgm-card .dgm-title,
+  .dgm-card .dgm-note {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .dgm-card p + p { margin-top: 3px; }
+
+  .dgm-title {
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    margin-bottom: 7px !important;
+  }
+
+  .dgm-card .dgm-face {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .dgm-note { font-size: 9.5px; opacity: 0.7; margin-top: 4px !important; }
+  .dgm-note.risk { color: var(--risk); opacity: 1; }
+  .dgm-note.good { color: var(--safe); opacity: 1; }
+
+  .dgm-sub { opacity: 0.7; }
+
+  /* client-coloured source card: tinted fill plus the left spine bar */
+  .dgm-card[data-client] {
+    background: var(--client-soft);
+    border-color: var(--client);
+    border-left: 6px solid var(--client);
+  }
+
+  .dgm-card[data-client] .dgm-title { color: var(--client); }
+
+  /* a rule between two feeds sharing one card (Fox stats / keyplays) */
+  .dgm-split {
+    border-top: 1px solid currentColor;
+    opacity: 0.25;
+    margin: 9px 0;
+  }
+
+  /* the shared-model / target column */
+  .dgm-target {
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .dgm-field {
+    background: var(--accent-soft);
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .dgm-field.ghost {
+    background: none;
+    border: 1px solid var(--rule-2);
+    font-weight: 400;
+    font-size: 10px;
+    opacity: 0.75;
+  }
+
+  .dgm-field .dgm-sub {
+    display: block;
+    font-weight: 400;
+    font-size: 9.5px;
+    margin-top: 3px;
+  }
+
+  /* the accent-bordered normalizer / boundary box */
+  .dgm-accent {
+    border: 1.6px solid var(--accent);
+    border-radius: 3px;
+    background: var(--accent-soft);
+    padding: 12px 14px;
+    text-align: center;
+    font-family: var(--f-mono);
+    color: var(--accent);
+    min-width: 0;
+  }
+
+  .dgm-accent b { display: block; font-size: 11.5px; line-height: 1.5; }
+  .dgm-accent span { display: block; font-size: 9.5px; opacity: 0.85; margin-top: 4px; overflow-wrap: anywhere; }
+
+  /* the shared-normalizer box lists two symbols then annotates them — a rule
+     keeps the names from reading as one run-on title */
+  .dgm-accent.is-filled b + b { margin-top: 2px; }
+
+  .dgm-accent.is-filled b + span,
+  .dgm-accent .dgm-accent-foot {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid currentColor;
+    opacity: 0.7;
+  }
+
+  .dgm-accent .dgm-accent-foot { margin-top: 6px; padding-top: 6px; }
+
+  .dgm-colhead {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 1.3px;
+    opacity: 0.55;
+    margin: 0 0 10px;
+  }
+
+  .dgm-colhead.accent { color: var(--accent); opacity: 1; }
+
+  .dgm-footnote {
+    grid-column: 1 / -1;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    color: var(--risk);
+    background: var(--risk-soft);
+    border-radius: 3px;
+    padding: 8px 12px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Column templates per figure.
+     Tracks are 1fr but the cards inside are width-capped, so the surplus falls
+     into the gutter rather than stretching the boxes — that's the room the
+     arrows need to read as connections rather than short stubs. */
+  .dgm.cols-3,
+  .dgm.cols-mid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dgm.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* cap the card width and centre it in its track */
+  .dgm-stack,
+  .dgm-target,
+  .dgm-accent {
+    max-width: 330px;
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .dgm.cols-mid .dgm-accent { max-width: 220px; }
+
+  /* explicit placement — auto-placement reorders columns once a spanning item
+     is in play, which put the sources to the right of their own normalizer */
+  .dgm > .dgm-col-1 { grid-column: 1; }
+  .dgm > .dgm-col-2 { grid-column: 2; }
+  .dgm > .dgm-col-3 { grid-column: 3; }
+
+  /* a middle/target column spans every source row beside it */
+  .dgm-span { grid-row: 1 / -1; align-self: center; }
+
+  .dgm-stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  figure.dgm-figure .figframe { overflow-x: hidden; }
+
+  /* Diagrams read wider than the prose. The text column is capped at a
+     comfortable measure, but a field map with five source clusters needs the
+     room — so the figure bleeds out of .wrap toward the viewport edges,
+     clamped so it never exceeds the window or collapses below the wrap width. */
+  figure.dgm-figure {
+    /* how much room actually exists outside .wrap, measured off the wrap's own
+       box rather than 100vw — vw includes the scrollbar, which pushed the
+       figure past the left edge on any window narrow enough to need one */
+    margin-inline: calc(var(--fig-bleed, 0px) * -1);
+  }
+
+  .dgm-card[data-client] { cursor: pointer; transition: opacity 0.15s ease; }
+  .dgm-card[data-client]:hover { border-color: var(--client); box-shadow: 0 0 0 1px var(--client); }
+
+  svg.dgm-arrows path { transition: opacity 0.15s ease; }
+
+  /* dim a toggled-off client — divs and their arrows alike */
+  .wrap[data-client-para-nfl="off"] [data-client="para-nfl"],
+  .wrap[data-client-para-mma="off"] [data-client="para-mma"],
+  .wrap[data-client-fox-stats="off"] [data-client="fox-stats"],
+  .wrap[data-client-fox-keyplays="off"] [data-client="fox-keyplays"],
+  .wrap[data-client-espn="off"] [data-client="espn"] {
+    opacity: 0.12;
+  }
+
+  /* stack to one column on narrow screens; arrows redraw to match */
+  @media (max-width: 900px) {
+    .dgm.cols-3,
+    .dgm.cols-2,
+    .dgm.cols-mid { grid-template-columns: minmax(0, 1fr); }
+    .dgm-span { grid-row: auto; }
+  }
+
+  .maplegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 0 0 18px;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface-2);
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  .maplegend i {
+    font-style: normal;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .maplegend .swatch {
+    width: 22px;
+    height: 0;
+    border-top: 2px solid var(--ink-3);
+    display: inline-block;
+  }
+  .maplegend .swatch.fallback { border-top-style: dashed; }
+  .maplegend .swatch.gap { border-top-color: var(--risk); border-top-style: dotted; }
+
+  .clientlegend-bar {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 10;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-bottom: 6px;
+    background: transparent;
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .clientlegend-bar.is-stuck {
+    background: var(--accent-soft);
+    border-bottom-color: var(--rule);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .clientlegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 22px 32px;
+  }
+
+  .client-btn {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    background: var(--surface-2);
+    border: 1px solid var(--rule-2);
+    border-radius: 20px;
+    padding: 5px 12px 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .client-btn:hover { border-color: var(--dot); }
+  .client-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .client-btn .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex: none;
+    background: var(--dot);
+  }
+
+  .client-btn[aria-pressed="false"],
+  .client-btn.wave-off {
+    opacity: 0.45;
+    background: transparent;
+  }
+
+  .client-btn[aria-pressed="false"] .dot,
+  .client-btn.wave-off .dot {
+    background: transparent;
+    border: 1.5px solid var(--dot);
+  }
+
+  .maphint {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    margin: 0 0 18px;
+  }
+
+  figure.map .dgm-card[data-client] {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .wrap[data-client-para-nfl="off"] figure.map svg [data-client="para-nfl"],
+  .wrap[data-client-para-mma="off"] figure.map svg [data-client="para-mma"],
+  .wrap[data-client-fox-stats="off"] figure.map svg [data-client="fox-stats"],
+  .wrap[data-client-fox-keyplays="off"] figure.map svg [data-client="fox-keyplays"],
+  .wrap[data-client-espn="off"] figure.map svg [data-client="espn"] {
+    opacity: 0.12;
+  }
+
+  /* ---------- phases ---------- */
+
+  ol.phases {
+    counter-reset: p;
+    list-style: none;
+    padding: 0;
+    margin: 24px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* direct children only — a bare descendant selector also caught the <li>s
+     inside each phase's own ul.plain, turning every nested bullet into a
+     44px-column grid that wrapped <code> to a few characters per line */
+  ol.phases > li {
+    counter-increment: p;
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 18px;
+    padding: 26px 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+
+  ol.phases > li::before {
+    content: counter(p);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+
+  ol.phases > li > div h3 { margin: 0 0 4px; font-size: 18px; }
+  ol.phases p { margin: 0; color: var(--ink-2); font-size: 14.5px; max-width: 64ch; }
+
+  ul.plain { padding-left: 20px; margin: 0 0 20px; max-width: var(--measure); }
+  ul.plain li { margin-bottom: 9px; color: var(--ink-2); }
+  ul.plain li strong { color: var(--ink); font-weight: 600; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px 80px; }
+    header.mast { padding-top: 44px; }
+  }
+
+  /* ---------- page nav ---------- */
+
+  nav.pagenav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  nav.pagenav .pagenav-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  nav.pagenav a {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 14px 14px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+
+  nav.pagenav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.pagenav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  nav.pagenav a.is-active {
+    color: var(--accent);
+    font-weight: 700;
+    border-bottom-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* ---------- page layout with section rail ---------- */
+
+  .pagegrid {
+    max-width: 1328px;
+    margin: 0 auto;
+    padding: 0 32px 120px;
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    gap: var(--rail-gap);
+    align-items: start;
+  }
+
+  .pagegrid .wrap {
+    padding: 0;
+    max-width: 1080px;
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .pagegrid nav.sectionnav {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* ---------- section nav (sidebar TOC) ---------- */
+
+  nav.sectionnav {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--legend-h, 0px) + 20px);
+    padding: 20px 20px 20px 0;
+    border-right: 1px solid var(--rule);
+    max-height: calc(100vh - var(--nav-h) - var(--legend-h, 0px) - 40px);
+    overflow-y: auto;
+    transition: top 0.15s ease;
+  }
+
+  nav.sectionnav .sectionnav-label {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  nav.sectionnav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  nav.sectionnav a {
+    display: block;
+    font-family: var(--f-body);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 7px 10px;
+    border-radius: 3px;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  nav.sectionnav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  nav.sectionnav a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  nav.sectionnav a.is-active {
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+
+  /* ---------- closing / next-page nav ---------- */
+
+  .pagefoot-next {
+    border-top: 1px solid var(--rule);
+    padding-top: 22px;
+    margin-top: 8px;
+  }
+
+  .pagefoot-next a {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .pagefoot-next a:hover { text-decoration: underline; }
+
+  @media (max-width: 1024px) {
+    .pagegrid {
+      display: block;
+      max-width: 1080px;
+    }
+
+    nav.sectionnav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="pagenav">
+  <div class="pagenav-inner">
+      <a href="../index.html">1. Context &amp; Problem</a>
+      <a href="02-shared-models.html">2. Shared Models</a>
+      <a href="03-implementation.html">3. Implementation</a>
+  </div>
+</nav>
+
+<div class="pagegrid">
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">maestro-sdk · data architecture proposal</p>
+    <h1>Shared Stats Models</h1>
+    <p class="standfirst">ESPN, Fox and Paramount each re-invent the same five entities — team, competitor, contest, stat row, status — in mutually incompatible shapes. The evidence below is drawn from the current source, and it already contains three implementations of one function that disagree on their output.</p>
+    <div class="scope">
+      <span>src-sdk/espn</span>
+      <span>src-sdk/fox</span>
+      <span>src-sdk/paramount</span>
+    </div>
+  </header>
+
+  <section>
+    <h2 id="the-proposed-models">The proposed models</h2>
+    <p class="sec-note">Five types, derived from what all three clients already build</p>
+
+    <div class="col">
+      <p>These are not new inventions. Each one is the intersection of shapes the clients already construct.</p>
+      <ul class="plain">
+        <li><code>Parse.Football.teamSide</code> is within a field or two of the target already.</li>
+        <li>That's the evidence the abstraction fits, rather than being imposed.</li>
+      </ul>
+    </div>
+
+    <h3>Where normalization lives — and where it must not</h3>
+
+    <div class="col">
+      <h4 class="subhead">The right transformation, wrong place</h4>
+      <p>Today's parse functions already do the right transformation; they just do it from the wrong place.</p>
+      <ul class="plain">
+        <li><code>Parse.Football.teamSide</code> runs from inside <code>Stats.Game.bs</code>.</li>
+        <li><code>Parse.fighters</code> runs from inside <code>Stats.Fight.bs</code>.</li>
+        <li><code>Stats.Event.bs</code>'s <code>beforeParseData</code> runs from inside a node whose own <code>.xml</code> interface declares <code>team1</code>/<code>team2</code> as raw assocarrays and <code>status</code> as a bare Fox integer (<code>Stats.Event.xml:11-15</code>).</li>
+      </ul>
+
+      <h4 class="subhead">Why the interface itself is the problem</h4>
+      <p>That's the problem, independent of where the parsing code physically runs. A client-specific ContentNode is a second model.</p>
+      <ul class="plain">
+        <li>Every card that reads <code>m.top</code> on <code>Stats.Event</code> couples to <em>its</em> interface, not the shared one.</li>
+        <li>That interface can grow a new Fox-only field the moment a dev needs one, with no shared-model gatekeeping in the way.</li>
+        <li>Putting the parse call inside the node doesn't cause that on its own — but a client-specific node makes the deviation possible and easy, which is exactly the failure mode this proposal closes off.</li>
+      </ul>
+
+      <h4 class="subhead">The fix: normalize in the Task</h4>
+      <p>The design puts normalization in the <b>Task</b> — <code>FoxTask</code>, <code>ParamountTask</code>, and an ESPN equivalent — which has no XML interface of its own to deviate through.</p>
+      <ul class="plain">
+        <li>A Task is not a ContentNode. It can only ever construct and emit the shared <code>Stats.*</code> node.</li>
+        <li>There is no <code>Stats.Event</code> for a Fox-only field to hide in, so the only way to satisfy a client's need is to extend the shared model itself.</li>
+        <li>Client-specific requirements stop being reasons to reinvent a client's own shape, and start being the input that makes <code>Stats.Competitor</code>, <code>Stats.Contest</code>, and the rest more capable for every client at once:</li>
+      </ul>
+    </div>
+
+    <figure class="dgm-figure">
+      <div class="figframe">
+        <div class="dgm cols-3">
+          <svg class="dgm-arrows" aria-hidden="true"></svg>
+
+          <div class="dgm-stack dgm-col-1">
+            <p class="dgm-colhead">FEED · RAW VOCABULARY</p>
+
+            <div class="dgm-card" data-from="fc-espn" data-to="fc-espn-task">
+              <p class="dgm-title dgm-face">ESPN feed</p>
+              <p class="dgm-sub">teams[k]["$key"] · shortDisplayName</p>
+              <p class="dgm-sub">gameState · homeAway + displayOrder</p>
+              <p class="dgm-note risk">no normalizer today</p>
+            </div>
+
+            <div class="dgm-card" data-from="fc-fox" data-to="fc-fox-task">
+              <p class="dgm-title dgm-face">Fox · stats</p>
+              <p class="dgm-sub">team1 / team2 · image.flag ?? image.logo</p>
+              <p class="dgm-sub">eventStatus 1|2|3 · eventInformation</p>
+              <p class="dgm-note risk">status compared as &lt;&gt; 2</p>
+
+              <div class="dgm-split"></div>
+
+              <p class="dgm-title dgm-face">Fox · keyplays</p>
+              <p class="dgm-sub">left_team / right_team · entity_id</p>
+              <p class="dgm-note risk">2nd team shape inside one client</p>
+            </div>
+
+            <div class="dgm-card" data-from="fc-para" data-to="fc-para-task">
+              <p class="dgm-title dgm-face">Paramount · NFL</p>
+              <p class="dgm-sub">awayTeam / homeTeam · team.nickname</p>
+              <p class="dgm-sub">"PREGAME" | "LIVE" | "POSTGAME"</p>
+              <p class="dgm-note good">closest fit already</p>
+
+              <div class="dgm-split"></div>
+
+              <p class="dgm-title dgm-face">Paramount · MMA</p>
+              <p class="dgm-sub">fighterDetails[] · corner · record</p>
+              <p class="dgm-note risk">no home/away — proves cross-sport fit</p>
+            </div>
+          </div>
+
+          <div class="dgm-stack dgm-col-2">
+            <p class="dgm-colhead accent">CLIENT TASK — ONLY RAW-SHAPE READER</p>
+
+            <div class="dgm-accent" data-node="fc-espn-task" data-from="fc-t1" data-to="fc-models" data-color="--accent">
+              <b>ESPNTask</b>
+              <span>built from scratch · phase 5</span>
+            </div>
+
+            <div class="dgm-accent" data-node="fc-fox-task" data-from="fc-t2" data-to="fc-models" data-color="--accent">
+              <b>FoxTask</b>
+              <span>retires Stats.Event · phase 4</span>
+            </div>
+
+            <div class="dgm-accent" data-node="fc-para-task" data-from="fc-t3" data-to="fc-models" data-color="--accent">
+              <b>ParamountTask</b>
+              <span>retires Stats.Game, Stats.Fight · phases 2–3</span>
+            </div>
+
+            <div class="dgm-accent is-filled" data-node="fc-norm" style="margin-top: 14px;">
+              <b>Parse.status</b>
+              <b>Stats.Fmt</b>
+              <span>shared by every Task · phase 1</span>
+              <span class="dgm-accent-foot">every Task calls the same normalizers</span>
+            </div>
+          </div>
+
+          <div class="dgm-stack dgm-col-3">
+            <p class="dgm-colhead">SHARED MODELS</p>
+
+            <div class="dgm-target" data-node="fc-models" data-from="fc-ui" data-to="fc-cards" data-axis="y">
+              <p class="dgm-note">src-sdk/core · the only node type any Task emits</p>
+
+              <div class="dgm-field">
+                Stats.Contest
+                <span class="dgm-sub">id · status · period · clock · home/away</span>
+              </div>
+              <div class="dgm-field">
+                Stats.Competitor
+                <span class="dgm-sub">id · shortName · logo · score · record</span>
+              </div>
+              <div class="dgm-field">
+                Stats.StatRow
+                <span class="dgm-sub">key · label · home/away · leader</span>
+              </div>
+              <div class="dgm-field">
+                Stats.Status
+                <span class="dgm-sub">upcoming | live | final | unknown</span>
+              </div>
+              <div class="dgm-field">
+                Stats.Fmt
+                <span class="dgm-sub">record · playerName · ordinal · decimal</span>
+              </div>
+            </div>
+
+            <div class="dgm-card" data-node="fc-cards">
+              <p class="dgm-title dgm-face">UI cards</p>
+              <p class="dgm-sub">statsGameInfoCard · fightCard</p>
+              <p class="dgm-sub">CompetitorsMatchup · teamGoals</p>
+              <p class="dgm-note good">no raw feed access · no client-specific node · no per-card guards</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        Every feed keeps its own vocabulary right up to the Task boundary.
+        <ul class="plain">
+          <li>The client's own Task is the <b>only</b> code that reads raw response shape, and the only thing it can construct is a <code>Stats.*</code> node — no <code>Stats.Event</code>, no <code>Stats.Game</code>, no client-specific interface left for a field to hide in.
+          </li>
+          <li>All three Tasks call the same <code>Parse.status</code> and <code>Stats.Fmt</code> — that's what stops the three <code>record()</code> implementations from re-diverging.</li>
+          <li>Downstream of the Task there is one shape. A card can no longer walk <code>athletes[…["$key"]].country.flag.href</code> — the traversal is already resolved, and there's no node left whose interface would let it try.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <div class="col">
+      <h4 class="subhead">Why the normalizer isn't a model method</h4>
+      <p><code>Parse.status</code> sits in <code>Parse.*</code>, not on <code>Stats.Status</code> — same reason parsing moved out of <code>Stats.Event</code>.</p>
+      <ul class="plain">
+        <li>A <code>.normalize()</code> method hanging off the model implies the model knows how to read raw client shape. That's the exact coupling this proposal removes.</li>
+        <li><code>Stats.Status</code> stays a plain enum with query methods (<code>isLive</code>, <code>isUpcoming</code>, <code>isFinal</code>) that operate on its own already-normalized value.</li>
+        <li>Nothing that accepts a raw int or client-specific string lives on the model.</li>
+      </ul>
+    </div>
+
+    <div class="model">
+      <div class="model-head">
+        <h4>Stats.Competitor</h4>
+        <span>One side of a contest — a team or an individual</span>
+      </div>
+<pre>{
+  id            as string     ' always a string; ESPN's "$key", Fox entity_id
+  shortName     as string     ' "LV" — the abbreviated form
+  displayName   as string     ' "Raiders" / "Jon Jones"
+  logo          as string     ' resolved from flag/logo/team_kit/image.url
+  primaryColor  as string     ' "" when the feed has none
+  secondaryColor as string
+  score         as integer
+  record        as Stats.Record
+  rank          as integer    ' 0 = unranked
+}</pre>
+      <div class="sourced">
+        <b>Shape proven by</b> (logic to relocate into <code>ParamountTask</code>/<code>FoxTask</code>, not left in place):
+        Parse.Football.teamSide (Stats.Game.bs:102) ·
+        Parse.fighters (Stats.Fight.bs:59) · teamPoster.bs:39 · StatsModel.brs:359
+      </div>
+    </div>
+
+    <div class="model">
+      <div class="model-head">
+        <h4>Stats.Contest</h4>
+        <span>A game, match, or fight — the container every panel is built around</span>
+      </div>
+<pre>{
+  id          as string
+  status      as Stats.Status   ' the shared enum, never a raw feed value
+  scheduled   as string         ' ISO8601, unparsed
+  period      as integer        ' quarter / round / half
+  clock       as string         ' "12:04", pre-formatted by the feed
+  seasonType  as Stats.SeasonType  ' which season — NOT scheduling status
+  home        as Stats.Competitor  ' semantic sides, resolved once at parse
+  away        as Stats.Competitor
+  competitors as Stats.Competitor[]   ' feed order, for non-H2H (fight cards)
+  title       as string
+  note        as string         ' Fox eventNotes, ESPN disclaimers
+}</pre>
+      <div class="sourced">
+        <b>Shape proven by</b> (logic to relocate into the client's Task;
+        <code>Stats.Event</code>'s own <code>.xml</code> interface — <code>team1</code>/<code>team2</code>
+        as raw assocarrays, <code>status</code> as a bare Fox integer — is retired, not carried forward):
+        Stats.Game parsePregame (Stats.Game.bs:38) ·
+        Stats.Event beforeParseData (Stats.Event.bs:11) · Stats.Fight (Stats.Fight.bs:17)
+      </div>
+    </div>
+
+    <div class="model">
+      <div class="model-head">
+        <h4>Stats.Status</h4>
+        <span>Two levels — a phase every card branches on, and a detail that keeps what the feed actually said</span>
+      </div>
+<pre>' the coarse lifecycle — the only thing a card must handle
+enum Stats.Phase
+  future  = "FUTURE"
+  live    = "LIVE"
+  past    = "PAST"
+  unknown = "UNKNOWN"
+end enum
+
+' additive detail — never required to render
+enum Stats.StatusDetail
+  scheduled     = "SCHEDULED"    ' future
+  delayed       = "DELAYED"
+  postponed     = "POSTPONED"
+
+  inProgress    = "IN_PROGRESS"  ' live
+  halftime      = "HALFTIME"     ' the broadcast's own break
+  betweenParts  = "BETWEEN_PARTS"' any other stoppage between parts
+  suspended     = "SUSPENDED"
+
+  final         = "FINAL"        ' past
+  canceled      = "CANCELED"
+  abandoned     = "ABANDONED"
+
+  unknown       = "UNKNOWN"
+end enum</pre>
+<pre>' Stats.Status carries both, so one value answers either question
+'   phase  as Stats.Phase          ' branch on this
+'   detail as Stats.StatusDetail   ' read only when you have something to show
+'   raw    as string               ' the feed's own value, kept for debugging
+
+' model methods — operate on an already-normalized Stats.Status value only
+Stats.Status.isLive(status)
+Stats.Status.isFuture(status)
+Stats.Status.isPast(status)</pre>
+<pre>' Parse.status lives alongside Parse.Football / Parse.fight / Parse.fox — it is
+' called from within each client's Task, never from the model
+Parse.status(raw) as Stats.Status   ' accepts int (Fox 1/2/3) and every
+                                     ' string vocabulary the three clients use</pre>
+      <div class="sourced">
+        <b>Replaces:</b> T.Fox.EventStatus · T.Paramount.GameStatus ·
+        T.Paramount.FightStatus · every <code>&lt;&gt; 2</code> literal
+      </div>
+    </div>
+
+    <div class="model">
+      <div class="model-head">
+        <h4>Stats.SeasonType</h4>
+        <span>Which season a contest belongs to — distinct from where it is in its own lifecycle</span>
+      </div>
+<pre>enum Stats.SeasonType
+  preseason  = "PRESEASON"
+  regular    = "REGULAR"
+  postseason = "POSTSEASON"
+  offseason  = "OFFSEASON"
+  unknown    = "UNKNOWN"
+end enum</pre>
+<pre>' accepts the feed's short and long spellings alike, and is the
+' only place that mapping lives
+Parse.seasonType(raw) as Stats.SeasonType
+
+' display stays a formatter, fed by the typed value not raw text
+Stats.Fmt.seasonName(seasonType)   ' regular -&gt; "Regular Season"</pre>
+      <div class="sourced">
+        <b>Why it is its own type:</b> <code>"PRE"</code> and <code>"POST"</code> mean
+        <em>preseason</em>/<em>postseason</em> to <code>seasonTypeLabel</code>
+        (Stats.Game.bs:220) but <em>pregame</em>/<em>postgame</em> to
+        <code>GameStatus.normalize</code> (enums.bs:29). Both uppercase and compare bare
+        strings — only the choice of function tells them apart.
+        <b>Replaces:</b> Parse.Football.seasonTypeLabel's string matching
+      </div>
+    </div>
+
+    <div class="model">
+      <div class="model-head">
+        <h4>Stats.Format</h4>
+        <span>Each contest declares its own part structure — nothing else knows what a quarter, round or half is</span>
+      </div>
+<pre>' declared once per contest by its client's Task
+{
+  partNoun        as string   ' "QUARTER" | "ROUND" | "HALF" | "PERIOD" | "INNING"
+  partNounShort   as string   ' "Q" | "R" | "H" | "P"
+  regulationParts as integer  ' 4 (NFL) · 5 (UFC main) · 2 (soccer) · 9 (MLB)
+  overtimeNoun    as string   ' "OVERTIME" | "" when the sport has none
+}
+
+' Stats.Contest carries the position within that structure
+period as integer   ' 1-based, counts past regulationParts into overtime
+format as Stats.Format</pre>
+<pre>' one labeller, driven by the declared format
+Stats.Fmt.partName(period, format)       ' 3, NFL -&gt; "3RD QUARTER"
+Stats.Fmt.partNameShort(period, format)  ' 3, NFL -&gt; "3RD"
+                                         ' 2, UFC -&gt; "R2"
+                                         ' 5, NFL -&gt; "OVERTIME"
+
+Stats.Contest.isOvertime(contest)        ' period &gt; format.regulationParts</pre>
+      <div class="sourced">
+        <b>Replaces:</b> Quarter.displayName (enums.bs:62) ·
+        Parse.WeekGames.periodLabel (Stats.WeekGames.bs:114) ·
+        fightCard.badgeText's inline <code>"R" + round</code> (fightCard.bs:290)
+      </div>
+    </div>
+
+    <div class="model">
+      <div class="model-head">
+        <h4>Stats.StatRow</h4>
+        <span>One comparison row — the unit behind every H2H and leaders card</span>
+      </div>
+<pre>{
+  key    as string    ' "totalYards"
+  label  as string    ' "Total Yards"
+  home   as Stats.StatValue   ' { value, note, share, rank }
+  away   as Stats.StatValue
+  leader as string    ' "home" | "away" | "" — never recomputed in a card
+}</pre>
+      <div class="sourced">
+        <b>Shape proven by</b> (logic to relocate into the client's Task):
+        Parse.Football.gameRow (Stats.Game.bs:367) ·
+        previewRow (:296) · Fox teamGoals.bs:81 <code>{template,text,value,barPercentage}</code>
+      </div>
+    </div>
+
+    <div class="model">
+      <div class="model-head">
+        <h4>Stats.Fmt</h4>
+        <span>Promotion of the existing helper to the shared layer, unchanged</span>
+      </div>
+<pre>Stats.Fmt.int / number / decimal / ordinal
+Stats.Fmt.record(record)      ' one output format, chosen deliberately
+Stats.Fmt.playerName(player)  ' "G. Minshew"</pre>
+      <div class="sourced">
+        <b>Promoted from:</b> paramount/server/FootballService/models/footballFormat.bs
+        — currently reachable by one service of one client
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="field-by-field-mapping">Field-by-field mapping</h2>
+    <p class="sec-note">Every source path, per client, per model field</p>
+
+    <div class="col">
+      <ul class="plain">
+        <li>These are the actual expressions in the working tree, not paraphrases.</li>
+        <li>Where a client resolves a value through a fallback chain, the whole chain is drawn — that chain gets deleted once the client's Task owns it.</li>
+        <li>See "Where normalization lives — and where it must not" above for why that logic lives in the Task, not a client-specific ContentNode.</li>
+      </ul>
+    </div>
+
+    <div class="maplegend">
+      <i><span class="swatch"></span> direct read</i>
+      <i><span class="swatch fallback"></span> fallback chain — first non-empty wins</i>
+      <i><span class="swatch gap"></span> no source in this feed</i>
+    </div>
+
+    <div id="legend-sentinel"></div>
+    <div class="clientlegend-bar" id="clientlegend-bar">
+    <div class="clientlegend" id="client-toggle" role="group" aria-label="Toggle client visibility in the field-mapping diagrams">
+      <button type="button" class="client-btn" data-client="para-nfl" style="--dot: var(--c-para-nfl);" aria-pressed="true"><span class="dot"></span> Paramount NFL</button>
+      <button type="button" class="client-btn" data-client="para-mma" style="--dot: var(--c-para-mma);" aria-pressed="true"><span class="dot"></span> Paramount MMA</button>
+      <button type="button" class="client-btn" data-client="fox-stats" style="--dot: var(--c-fox-stats);" aria-pressed="true"><span class="dot"></span> Fox stats</button>
+      <button type="button" class="client-btn" data-client="fox-keyplays" style="--dot: var(--c-fox-keyplays);" aria-pressed="true"><span class="dot"></span> Fox keyplays</button>
+      <button type="button" class="client-btn" data-client="espn" style="--dot: var(--c-espn);" aria-pressed="true"><span class="dot"></span> ESPN</button>
+    </div>
+    </div>
+    <p class="maphint">Click a client to dim it in the diagrams below.</p>
+
+    <!-- ============================================================
+         FIGURE · Stats.Competitor
+         ============================================================ -->
+    <figure class="map dgm-figure">
+      <div class="figframe">
+        <div class="dgm cols-2">
+          <svg class="dgm-arrows" aria-hidden="true"></svg>
+
+          <div class="dgm-stack dgm-col-1">
+            <p class="dgm-colhead accent">STATS.COMPETITOR</p>
+
+            <div class="dgm-card" data-client="para-nfl" style="--client: var(--c-para-nfl); --client-soft: var(--c-para-nfl-soft);">
+              <p class="dgm-title">PARAMOUNT NFL</p>
+              <p data-from="cp-nfl-id" data-to="cp-id" data-color="--c-para-nfl">id: team.id.toStr()</p>
+              <p data-from="cp-nfl-ab" data-to="cp-abbr" data-color="--c-para-nfl">shortName: team?.abbrev</p>
+              <p data-from="cp-nfl-dn" data-to="cp-name" data-color="--c-para-nfl">displayName: team?.nickname</p>
+              <p data-from="cp-nfl-lg" data-to="cp-logo" data-color="--c-para-nfl">logo: team?.image?.url</p>
+              <p data-from="cp-nfl-sc" data-to="cp-score" data-color="--c-para-nfl">score: scoreboard.away.total</p>
+            </div>
+
+            <div class="dgm-card" data-client="para-mma" style="--client: var(--c-para-mma); --client-soft: var(--c-para-mma-soft);">
+              <p class="dgm-title">PARAMOUNT MMA</p>
+              <p data-from="cp-mma-id" data-to="cp-id" data-color="--c-para-mma">id: as.string(fighter?.id)</p>
+              <p data-from="cp-mma-dn" data-to="cp-name" data-color="--c-para-mma">displayName: firstName + " " + lastName</p>
+              <p class="dgm-note risk">no score, no brand colour</p>
+            </div>
+
+            <div class="dgm-card" data-client="fox-stats" style="--client: var(--c-fox-stats); --client-soft: var(--c-fox-stats-soft);">
+              <p class="dgm-title">FOX · STATS</p>
+              <p data-from="cp-fs-dn" data-to="cp-name" data-color="--c-fox-stats">displayName: team.name</p>
+              <p data-from="cp-fs-lg" data-to="cp-logo" data-color="--c-fox-stats" data-dash="4 3">logo: image?.flag ?? image?.logo</p>
+              <p data-from="cp-fs-sc" data-to="cp-score" data-color="--c-fox-stats">score: team1.score</p>
+              <p data-from="cp-fs-pc" data-to="cp-color" data-color="--c-fox-stats">primaryColor: team.color</p>
+              <p class="dgm-note">no abbreviation field &rarr; shortName unfed</p>
+            </div>
+
+            <div class="dgm-card" data-client="fox-keyplays" style="--client: var(--c-fox-keyplays); --client-soft: var(--c-fox-keyplays-soft);">
+              <p class="dgm-title">FOX · KEYPLAYS</p>
+              <p data-from="cp-fk-id" data-to="cp-id" data-color="--c-fox-keyplays">id: entity_id</p>
+              <p data-from="cp-fk-ab" data-to="cp-abbr" data-color="--c-fox-keyplays" data-dash="4 3">shortName: left_team?.abbreviation ?? name</p>
+              <p data-from="cp-fk-lg" data-to="cp-logo" data-color="--c-fox-keyplays" data-dash="4 3">logo: images?.team_kit ?? tertiary ?? primary</p>
+              <p data-from="cp-fk-sc" data-to="cp-score" data-color="--c-fox-keyplays">score: left_team_score</p>
+              <p class="dgm-note risk" data-from="cp-fk-gap" data-to="cp-color" data-color="--risk" data-dash="2 3">string "0" · no brand colour</p>
+            </div>
+
+            <div class="dgm-card" data-client="espn" style="--client: var(--c-espn); --client-soft: var(--c-espn-soft);">
+              <p class="dgm-title">ESPN</p>
+              <p data-from="cp-es-id" data-to="cp-id" data-color="--c-espn">id: teams[k].id — int, must .toStr()</p>
+              <p data-from="cp-es-ab" data-to="cp-abbr" data-color="--c-espn">shortName + displayName: shortDisplayName</p>
+              <p class="dgm-note" data-from="cp-es-dn" data-to="cp-name" data-color="--c-espn">(same field used for both)</p>
+              <p data-from="cp-es-lg" data-to="cp-logo" data-color="--c-espn">logo: logo / logoDark · score: points / score</p>
+              <p class="dgm-note risk" data-from="cp-es-gap" data-to="cp-color" data-color="--risk" data-dash="2 3">no brand colour</p>
+            </div>
+          </div>
+
+          <div class="dgm-target dgm-col-2" data-node="cp-target">
+            <p class="dgm-colhead">SHARED MODEL</p>
+
+            <div class="dgm-field" data-node="cp-id">id as string</div>
+            <div class="dgm-field" data-node="cp-abbr">shortName</div>
+            <div class="dgm-field" data-node="cp-name">displayName</div>
+            <div class="dgm-field" data-node="cp-logo">logo</div>
+            <div class="dgm-field" data-node="cp-score">score as integer</div>
+            <div class="dgm-field" data-node="cp-color">primaryColor</div>
+            <div class="dgm-field ghost">record &rarr; Stats.Fmt.record</div>
+
+            <p class="dgm-note risk">&#9888; ESPN id is int, not string</p>
+            <p class="dgm-note risk">&#9888; ESPN reuses one field for shortName + displayName</p>
+          </div>
+
+          <p class="dgm-footnote">ESPN · FOX KEYPLAYS &rarr; no brand colour in feed &rarr; "" · card falls back to theme</p>
+        </div>
+      </div>
+      <figcaption><b>Stats.Competitor.</b> Five feeds, four spellings of identity — grouped here by client so a solid-colored path traces one feed's contribution end to end. Dashed segments are fallback chains — first non-empty wins.
+        <ul class="plain">
+          <li><b>ESPN's <code>id</code> is an integer.</b> Every other feed gives a string. The parse must coerce, or lookups silently miss.
+          </li>
+          <li><b>ESPN reuses <code>shortDisplayName</code></b> for both <code>shortName</code> and <code>displayName</code>. One of the two is approximate until a better field is found.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <!-- ============================================================
+         FIGURE · Stats.Status
+         ============================================================ -->
+    <figure class="map dgm-figure">
+      <div class="figframe">
+        <div class="dgm cols-2">
+          <svg class="dgm-arrows" aria-hidden="true"></svg>
+
+          <div class="dgm-stack dgm-col-1">
+            <p class="dgm-colhead accent">STATS.STATUS · RAW VOCABULARIES</p>
+
+            <div class="dgm-card" data-client="para-nfl" style="--client: var(--c-para-nfl); --client-soft: var(--c-para-nfl-soft);">
+              <p class="dgm-title">PARAMOUNT NFL · GameStatus</p>
+              <p data-from="st-nfl-f" data-to="st-future" data-color="--c-para-nfl">"PREGAME" "PRE" "SCHEDULED" "UPCOMING" "FUTURE"</p>
+              <p data-from="st-nfl-l" data-to="st-live" data-color="--c-para-nfl">"LIVE" "IN" "IN_PROGRESS" "INPROGRESS" "ACTIVE"</p>
+              <p data-from="st-nfl-i" data-to="st-live" data-color="--c-para-nfl" data-dash="4 3">"HALFTIME" &rarr; detail: halftime</p>
+              <p data-from="st-nfl-p" data-to="st-past" data-color="--c-para-nfl">"POSTGAME" "POST" "FINAL" "COMPLETE" "COMPLETED" "ENDED"</p>
+            </div>
+
+            <div class="dgm-card" data-client="para-mma" style="--client: var(--c-para-mma); --client-soft: var(--c-para-mma-soft);">
+              <p class="dgm-title">PARAMOUNT MMA · FightStatus</p>
+              <p data-from="st-mma-f" data-to="st-future" data-color="--c-para-mma">"UPCOMING" "SCHEDULED" "PRE" "PREGAME" "FUTURE"</p>
+              <p data-from="st-mma-l" data-to="st-live" data-color="--c-para-mma">"LIVE" "IN_PROGRESS" "INPROGRESS" "ACTIVE"</p>
+              <p data-from="st-mma-p" data-to="st-past" data-color="--c-para-mma">"FINAL" "COMPLETE" "COMPLETED" "ENDED"</p>
+            </div>
+
+            <div class="dgm-card" data-client="fox-stats" style="--client: var(--c-fox-stats); --client-soft: var(--c-fox-stats-soft);">
+              <p class="dgm-title">FOX · EventStatus (integer)</p>
+              <p data-from="st-fox-f" data-to="st-future" data-color="--c-fox-stats">FUTURE_EVENT = 2</p>
+              <p data-from="st-fox-l" data-to="st-live" data-color="--c-fox-stats">LIVE_EVENT = 1</p>
+              <p data-from="st-fox-p" data-to="st-past" data-color="--c-fox-stats">PAST_EVENT = 3</p>
+            </div>
+
+            <div class="dgm-card" data-client="espn" style="--client: var(--c-espn); --client-soft: var(--c-espn-soft);">
+              <p class="dgm-title">ESPN · gameState (never normalized)</p>
+              <p data-from="st-espn-f" data-to="st-future" data-color="--c-espn">"pre"</p>
+              <p data-from="st-espn-l" data-to="st-live" data-color="--c-espn">"in"</p>
+              <p data-from="st-espn-p" data-to="st-past" data-color="--c-espn">"post"</p>
+              <p class="dgm-note risk" data-from="st-espn-u" data-to="st-unknown" data-color="--risk" data-dash="2 3">"fallback" · status.type · betStatus</p>
+            </div>
+
+            <div class="dgm-card">
+              <p class="dgm-title">NO CLIENT ACCEPTS THESE TODAY</p>
+              <p class="dgm-note risk" data-from="st-gap-f" data-to="st-future" data-color="--risk" data-dash="2 3">DELAYED · POSTPONED &rarr; fall through to unknown</p>
+              <p class="dgm-note risk" data-from="st-gap-l" data-to="st-live" data-color="--risk" data-dash="2 3">SUSPENDED &rarr; falls through to unknown</p>
+              <p class="dgm-note risk" data-from="st-gap-p" data-to="st-past" data-color="--risk" data-dash="2 3">CANCELED · ABANDONED &rarr; fall through to unknown</p>
+            </div>
+          </div>
+
+          <div class="dgm-stack dgm-span dgm-col-2">
+            <p class="dgm-colhead">PHASE · what every card branches on</p>
+
+            <div class="dgm-field" data-node="st-future">
+              future
+              <span class="dgm-sub">scheduled · delayed · postponed</span>
+            </div>
+            <div class="dgm-field" data-node="st-live">
+              live
+              <span class="dgm-sub">inProgress · halftime · betweenParts · suspended</span>
+            </div>
+            <div class="dgm-field" data-node="st-past">
+              past
+              <span class="dgm-sub">final · canceled · abandoned</span>
+            </div>
+            <div class="dgm-field ghost" data-node="st-unknown">
+              unknown
+              <span class="dgm-sub">unrecognised input never renders as a raw feed value</span>
+            </div>
+
+            <p class="dgm-note">solid = accepted today · dashed = detail the fold currently loses, or a state no client accepts</p>
+          </div>
+
+          <p class="dgm-footnote">retires: T.Fox.EventStatus · T.Paramount.GameStatus · T.Paramount.FightStatus · and 5 sites comparing status &lt;&gt; 2</p>
+        </div>
+      </div>
+      <figcaption><b>Stats.Status.</b> Two levels, not one: a <code>phase</code> every card can branch on, and a <code>detail</code> that keeps what the feed actually said. Every raw vocabulary group carries its own arrow to the phase it lands in — solid where a normalizer accepts it today, dashed where the value is either folded away (<code>"HALFTIME"</code>) or accepted by no client at all.
+        <ul class="plain">
+          <li><b>Three phases, because that's what the UI decides with.</b> <code>past</code>, <code>live</code> and <code>future</code> gate which cards render — that's the only question the current <code>isPregame</code>/<code>isLive</code>/<code>isPostgame</code> predicates ever ask.
+          </li>
+          <li><b>Sub-status stops the information loss.</b> Today <code>GameStatus.normalize</code> folds 17 raw inputs into 3 values and <code>FightStatus.normalize</code> folds 13 into 3. <code>"HALFTIME"</code> becomes indistinguishable from <code>"IN_PROGRESS"</code>, and <code>"ENDED"</code> from <code>"FINAL"</code> — a scoreboard that wants to show "HALF" has nowhere to read it from.</li>
+          <li><b>Halftime earns its own detail.</b> A halftime show is a broadcast state with its own programming, not just a gap between parts — and it is not derivable from position: NFL declares four quarters, so its halftime is the break after part 2 of 4, and hockey's is after part 2 of 3. The feeds already send <code>"HALFTIME"</code> outright, so folding it into a positional rule would be a lossy round-trip. Every other stoppage — between rounds, between innings — is <code>betweenParts</code>.</li>
+          <li><b>Position still belongs to <code>Stats.Format</code>.</b> Which part a contest is in, and whether that part is past regulation, come from the declared part count (<code>period &gt; regulationParts</code>) rather than from a status value.</li>
+          <li><b>The three phases already exist — they're just re-derived per client.</b> <code>footballCardManifest.phaseKey()</code> maps the NFL enum to <code>"pre"</code>/<code>"live"</code>/<code>"post"</code>, and <code>paramountStats.bs</code> hand-rolls the same mapping again from raw MMA strings. <code>statsCardConfig.bs</code> then keys every card list on those three. The clustering isn't new vocabulary; it's the vocabulary the config layer already speaks, promoted to the model.</li>
+          <li><b>It stays additive.</b> NFL's 20 call sites ask a coarse question, so they keep working against <code>phase</code> alone. A card opts into <code>detail</code> only when it has something to show for it.</li>
+          <li><b>MMA never adopted its own enum.</b> <code>FightStatus.isFinal</code>/<code>isLive</code>/<code>isUpcoming</code> are defined and never called — the UI compares raw <code>"LIVE"</code> and <code>"FINAL"</code> at eight sites instead. A phase those cards can actually branch on is what the predicates failed to give them.</li>
+          <li>The normalizer still has to accept an integer as well as strings — that single requirement lets Fox stop comparing against <code>2</code>.</li>
+        </ul>
+      </figcaption>
+    </figure>
+
+    <!-- ============================================================
+         FIGURE · Stats.Contest
+         ============================================================ -->
+    <figure class="map dgm-figure">
+      <div class="figframe">
+        <div class="dgm cols-mid">
+          <svg class="dgm-arrows" aria-hidden="true"></svg>
+
+          <div class="dgm-stack dgm-col-1">
+            <p class="dgm-colhead accent">STATS.CONTEST · SIDES</p>
+
+            <div class="dgm-card" data-client="para-nfl" style="--client: var(--c-para-nfl); --client-soft: var(--c-para-nfl-soft);"
+                 data-from="ct-nfl" data-to="ct-resolver" data-color="--c-para-nfl">
+              <p class="dgm-title">PARAMOUNT NFL — semantic</p>
+              <p>data.awayTeam · data.homeTeam</p>
+              <p class="dgm-note good">already correct</p>
+            </div>
+
+            <div class="dgm-card" data-client="para-mma" style="--client: var(--c-para-mma); --client-soft: var(--c-para-mma-soft);"
+                 data-from="ct-mma" data-to="ct-resolver" data-color="--c-para-mma">
+              <p class="dgm-title">PARAMOUNT MMA — no sides</p>
+              <p>fighterDetails[].corner</p>
+            </div>
+
+            <div class="dgm-card" data-client="fox-stats" style="--client: var(--c-fox-stats); --client-soft: var(--c-fox-stats-soft);"
+                 data-from="ct-foxs" data-to="ct-resolver" data-color="--c-fox-stats">
+              <p class="dgm-title">FOX STATS — feed order</p>
+              <p>info.team1 · info.team2</p>
+              <p class="dgm-note risk">order &ne; home/away</p>
+            </div>
+
+            <div class="dgm-card" data-client="fox-keyplays" style="--client: var(--c-fox-keyplays); --client-soft: var(--c-fox-keyplays-soft);"
+                 data-from="ct-foxk" data-to="ct-resolver" data-color="--c-fox-keyplays">
+              <p class="dgm-title">FOX KEYPLAYS — positional</p>
+              <p>left_team · right_team</p>
+              <p class="dgm-note risk">screen position, not identity</p>
+            </div>
+
+            <div class="dgm-card" data-client="espn" style="--client: var(--c-espn); --client-soft: var(--c-espn-soft);"
+                 data-from="ct-espn" data-to="ct-resolver" data-color="--c-espn">
+              <p class="dgm-title">ESPN — derived at each card</p>
+              <p>homeAway + displayOrder, SortBy</p>
+              <p class="dgm-note risk">re-derived per card</p>
+            </div>
+          </div>
+
+          <div class="dgm-accent dgm-span dgm-col-2" data-node="ct-resolver"
+               data-from="ct-out" data-to="ct-home,ct-list" data-color="--accent">
+            <b>resolve sides</b>
+            <span>once, at parse time</span>
+            <span>not in every card</span>
+          </div>
+
+          <div class="dgm-stack dgm-span dgm-col-3">
+            <div class="dgm-target" data-node="ct-home">
+              <div class="dgm-field">home as Stats.Competitor</div>
+              <div class="dgm-field">away as Stats.Competitor</div>
+              <p class="dgm-note">head-to-head cards read these — never an index</p>
+            </div>
+
+            <div class="dgm-target" data-node="ct-list">
+              <div class="dgm-field">competitors[] as Stats.Competitor</div>
+              <p class="dgm-note">feed order preserved · for fight cards and anything without a home side</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Stats.Contest sides.</b> This is the mapping with the highest bug potential — <code>away/home</code>, <code>team1/team2</code> and <code>left/right</code> answer three different questions: semantic, feed-ordered, positional. Today each card decides for itself. <br><br> Fix: resolve once at parse, and expose <em>both</em> named sides and an ordered array. Covers head-to-head and fight cards without either borrowing the other's assumption.</figcaption>
+    </figure>
+
+    <!-- ============================================================
+         FIGURE · Stats.StatRow
+         ============================================================ -->
+    <figure class="map dgm-figure">
+      <div class="figframe">
+        <div class="dgm cols-2">
+          <svg class="dgm-arrows" aria-hidden="true"></svg>
+
+          <div class="dgm-stack dgm-col-1">
+            <p class="dgm-colhead accent">STATS.STATROW</p>
+
+            <div class="dgm-card" data-client="para-nfl" style="--client: var(--c-para-nfl); --client-soft: var(--c-para-nfl-soft);"
+                 data-from="sr-nfl" data-to="sr-target" data-color="--c-para-nfl">
+              <p class="dgm-title">PARAMOUNT · Parse.Football.gameRow</p>
+              <p>key · label</p>
+              <p>away / home &rarr; { value, note, share }</p>
+              <p>previewRow adds { rank, rankValue }</p>
+              <p class="dgm-note good">already the target shape</p>
+            </div>
+
+            <div class="dgm-card" data-client="fox-stats" style="--client: var(--c-fox-stats); --client-soft: var(--c-fox-stats-soft);"
+                 data-from="sr-fox" data-to="sr-target" data-color="--c-fox-stats">
+              <p class="dgm-title">FOX · teamGoals row</p>
+              <p>template · text</p>
+              <p>value · barPercentage</p>
+              <p class="dgm-note">barPercentage &equiv; share, precomputed</p>
+              <p class="dgm-note risk">no key — row identity is positional</p>
+            </div>
+          </div>
+
+          <div class="dgm-stack dgm-col-2">
+            <div class="dgm-target" data-node="sr-target">
+              <div class="dgm-field">key as string</div>
+              <div class="dgm-field">label as string</div>
+              <div class="dgm-field">
+                home / away as Stats.StatValue
+                <span class="dgm-sub">{ value, note, share, rank }</span>
+              </div>
+              <div class="dgm-field" style="color: var(--accent);">
+                leader as string
+                <span class="dgm-sub">"home" | "away" | "" — computed once by rank, not by raw value</span>
+              </div>
+            </div>
+
+            <div class="dgm-field ghost">
+              values pass through Stats.Fmt.decimal — a pre-formatted feed string is left alone
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Stats.StatRow.</b> Paramount's row is already the target. Fox's differs mainly in naming (<code>barPercentage</code> is <code>share</code>) and in lacking a stable <code>key</code> — its rows can only be addressed by position. <br><br> The one genuinely new field is <code>leader</code>, computed by league rank rather than raw value, so lower-is-better stats like yards allowed don't highlight the wrong side.</figcaption>
+    </figure>
+  </section>
+
+
+<p class="pagefoot-next"><a href="03-implementation.html">Next: Implementation &rarr;</a></p>
+
+</div>
+
+<nav class="sectionnav" aria-label="Sections on this page">
+  <p class="sectionnav-label">On this page</p>
+  <ul>
+      <li><a href="#the-proposed-models">The proposed models</a></li>
+      <li><a href="#field-by-field-mapping">Field-by-field mapping</a></li>
+  </ul>
+</nav>
+</div>
+
+<script src="shared.js"></script>
+<script src="diagram-arrows.js"></script>
+<script>
+  var wrap = document.querySelector('.wrap');
+  var legend = document.getElementById('client-toggle');
+  var legendButtons = Array.prototype.slice.call(legend.querySelectorAll('.client-btn'));
+
+  function setClientOn(client, on) {
+    var btn = legend.querySelector('.client-btn[data-client="' + client + '"]');
+    if (btn) btn.setAttribute('aria-pressed', String(on));
+
+    var attr = 'data-client-' + client;
+    if (on) {
+      wrap.removeAttribute(attr);
+    } else {
+      wrap.setAttribute(attr, 'off');
+    }
+  }
+
+  function toggleClient(client) {
+    var btn = legend.querySelector('.client-btn[data-client="' + client + '"]');
+    var isOn = btn ? btn.getAttribute('aria-pressed') === 'true' : true;
+    setClientOn(client, !isOn);
+  }
+
+  legend.addEventListener('click', function (e) {
+    var btn = e.target.closest('.client-btn');
+    if (btn) toggleClient(btn.dataset.client);
+  });
+
+  // every colored field-mapping block in the diagrams is also a toggle for its client
+  var clientNames = {
+    'para-nfl': 'Paramount NFL',
+    'para-mma': 'Paramount MMA',
+    'fox-stats': 'Fox stats',
+    'fox-keyplays': 'Fox keyplays',
+    'espn': 'ESPN'
+  };
+
+  document.querySelectorAll('figure.map .dgm-card[data-client]').forEach(function (group) {
+    var client = group.dataset.client;
+    group.setAttribute('tabindex', '0');
+    group.setAttribute('role', 'button');
+    group.setAttribute('aria-label', 'Toggle ' + (clientNames[client] || client));
+
+    group.addEventListener('click', function () { toggleClient(client); });
+    group.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleClient(client);
+      }
+    });
+  });
+
+  // start every client OFF so the intro wave has something real to press
+  legendButtons.forEach(function (btn) { setClientOn(btn.dataset.client, false); });
+
+  // one-time intro: simulates pressing each button on, one at a time, in view,
+  // then a final press turns everything on — demonstrates real interactivity
+  (function () {
+    var STEP_MS = 650;
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var played = false;
+
+    function runWave() {
+      if (played) return;
+      played = true;
+
+      if (reduceMotion) {
+        legendButtons.forEach(function (btn) { setClientOn(btn.dataset.client, true); });
+        return;
+      }
+
+      legendButtons.forEach(function (btn, i) {
+        var client = btn.dataset.client;
+        setTimeout(function () { setClientOn(client, true); }, (i + 1) * STEP_MS);
+        setTimeout(function () { setClientOn(client, false); }, (i + 2) * STEP_MS);
+      });
+
+      setTimeout(function () {
+        legendButtons.forEach(function (btn) { setClientOn(btn.dataset.client, true); });
+      }, (legendButtons.length + 1) * STEP_MS);
+    }
+
+    if (!('IntersectionObserver' in window)) {
+      legendButtons.forEach(function (btn) { setClientOn(btn.dataset.client, true); });
+      return;
+    }
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          runWave();
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0.6 });
+
+    observer.observe(legend);
+  })();
+
+  // the legend bar only gets its tinted background once it's actually stuck to the
+  // top of the viewport, not while it's still inline in the page flow
+  (function () {
+    var sentinel = document.getElementById('legend-sentinel');
+    var bar = document.getElementById('clientlegend-bar');
+    if (!sentinel || !bar || !('IntersectionObserver' in window)) return;
+
+    // while the legend is stuck it occupies the band directly under the page-nav,
+    // so publish its height for the side nav to sit below. Measured rather than
+    // hardcoded — the legend wraps to a second row on narrow windows.
+    function setStuck(isStuck) {
+      bar.classList.toggle('is-stuck', isStuck);
+
+      var height = isStuck ? Math.round(bar.getBoundingClientRect().height) : 0;
+      document.documentElement.style.setProperty('--legend-h', height + 'px');
+    }
+
+    // "not intersecting" alone is also true while the sentinel is still far
+    // below the fold, so check which side it left — the bar is only pinned once
+    // the sentinel has scrolled off the TOP.
+    var stickObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var scrolledPast = entry.boundingClientRect.top < 0;
+        setStuck(!entry.isIntersecting && scrolledPast);
+      });
+    }, { threshold: 0 });
+
+    stickObserver.observe(sentinel);
+
+    // the legend's height changes when it wraps, so re-publish on resize
+    window.addEventListener('resize', function () {
+      if (bar.classList.contains('is-stuck')) setStuck(true);
+    });
+  })();
+</script>
+</body>
+</html>
